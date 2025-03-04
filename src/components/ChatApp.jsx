@@ -1,6 +1,8 @@
 import React, { useState, useRef, useEffect } from "react";
 import "bootstrap/dist/css/bootstrap.min.css";
 import { FaAddressBook, FaCog } from "react-icons/fa";
+import { useNavigate } from "react-router-dom"; // Import điều hướng
+import supabase from "./supabaseClient";
 
 const contacts = [
   { id: 1, name: "Nguyễn Văn A", avatar: "https://hoanghamobile.com/tin-tuc/wp-content/uploads/2024/09/hinh-anh-dong-52.jpg" },
@@ -8,19 +10,38 @@ const contacts = [
   { id: 3, name: "Lê Văn C", avatar: "https://hoanghamobile.com/tin-tuc/wp-content/uploads/2024/09/hinh-anh-dong-52.jpg" }
 ];
 
-function App() {
+function ChatApp() {
+  const navigate = useNavigate(); // Hook điều hướng
   const [selectedChat, setSelectedChat] = useState(() => {
-    const savedChat = JSON.parse(localStorage.getItem("selectedChat"));
-    return savedChat || contacts[0];
+    return JSON.parse(localStorage.getItem("selectedChat")) || contacts[0];
   });
   const [avatar, setAvatar] = useState("https://hoanghamobile.com/tin-tuc/wp-content/uploads/2024/09/hinh-anh-dong-52.jpg");
   const [showSettings, setShowSettings] = useState(false);
-  const [messages, setMessages] = useState(() => {
-    return JSON.parse(localStorage.getItem("messages")) || {};
-  });
+  const [messages, setMessages] = useState(() => JSON.parse(localStorage.getItem("messages")) || {});
   const [inputMessage, setInputMessage] = useState("");
   const settingsRef = useRef(null);
-
+  const handleLogout = async () => {
+    await supabase.auth.signOut(); 
+    localStorage.clear();
+    sessionStorage.clear();
+  
+    navigate("/", { replace: true });
+    window.history.pushState(null, null, "/"); // Ngăn back lại
+    window.location.reload();
+  };
+  
+  
+  useEffect(() => {
+    const checkSession = async () => {
+      const { data } = await supabase.auth.getSession();
+      if (!data.session) {
+        navigate("/", { replace: true });
+      }
+    };
+  
+    checkSession();
+  }, [navigate]);
+  
   useEffect(() => {
     localStorage.setItem("messages", JSON.stringify(messages));
   }, [messages]);
@@ -28,6 +49,17 @@ function App() {
   useEffect(() => {
     localStorage.setItem("selectedChat", JSON.stringify(selectedChat));
   }, [selectedChat]);
+
+  // Đóng menu cài đặt khi click ra ngoài
+  useEffect(() => {
+    function handleClickOutside(event) {
+      if (settingsRef.current && !settingsRef.current.contains(event.target)) {
+        setShowSettings(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   const handleAvatarChange = (event) => {
     const file = event.target.files[0];
@@ -65,9 +97,18 @@ function App() {
             <FaCog size={24} />
           </button>
           {showSettings && (
-            <div ref={settingsRef} className="settings-menu position-absolute bg-white text-dark p-2 rounded shadow" style={{ top: "calc(100% + 5px)", left: "50%", transform: "translateX(-50%)", minWidth: "140px", zIndex: 10 }}>
+            <div ref={settingsRef} className="settings-menu position-absolute bg-white text-dark p-2 rounded shadow"
+              style={{
+                top: "160px",
+                left: "135px",
+                transform: "translateX(-50%)",
+                minWidth: "180px",
+                zIndex: 1000
+              }}>
               <p className="mb-2 m-0 p-2 bg-light rounded">Thông tin tài khoản</p>
-              <p className="mb-0 m-0 p-2 bg-light rounded">Đăng xuất</p>
+              <p className="mb-0 m-0 p-2 bg-light rounded text-danger" onClick={handleLogout} style={{ cursor: "pointer" }}>
+                Đăng xuất
+              </p>
             </div>
           )}
         </div>
@@ -107,4 +148,4 @@ function App() {
   );
 }
 
-export default App;
+export default ChatApp;
