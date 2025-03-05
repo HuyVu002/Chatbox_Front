@@ -1,14 +1,16 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import "bootstrap/dist/css/bootstrap.min.css";
-import supabase from "./supabaseClient";
+import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, sendEmailVerification } from "firebase/auth";
+import "./firebaseClient"; // Đảm bảo Firebase đã được khởi tạo
 
 function Auth() {
   const navigate = useNavigate();
+  const auth = getAuth();
   const [isLogin, setIsLogin] = useState(true);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState(""); // Thêm nhập lại mật khẩu
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
@@ -19,7 +21,6 @@ function Auth() {
     setError("");
     setMessage("");
 
-    // Nếu đang đăng ký, kiểm tra mật khẩu nhập lại
     if (!isLogin && password !== confirmPassword) {
       setError("Mật khẩu nhập lại không khớp!");
       setLoading(false);
@@ -27,27 +28,21 @@ function Auth() {
     }
 
     try {
-      let response;
       if (isLogin) {
-        // Xử lý đăng nhập
-        response = await supabase.auth.signInWithPassword({ email, password });
-        if (response.error) {
-          setError(response.error.message);
-        } else {
-          navigate("/chat"); // Chuyển sang trang chat nếu đăng nhập thành công
+        const userCredential = await signInWithEmailAndPassword(auth, email, password);
+        if (!userCredential.user.emailVerified) {
+          setError("Bạn cần xác thực email trước khi đăng nhập.");
+          return;
         }
+        navigate("/chat");
       } else {
-        // Xử lý đăng ký
-        response = await supabase.auth.signUp({ email, password });
-        if (response.error) {
-          setError(response.error.message);
-        } else {
-          setMessage("🎉 Chúc mừng! Đăng ký thành công. Vui lòng kiểm tra email.");
-          setIsLogin(true); // Quay lại trạng thái đăng nhập
-        }
+        const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+        await sendEmailVerification(userCredential.user);
+        setMessage("🎉 Chúc mừng! Vui lòng kiểm tra email để xác thực tài khoản.");
+        setIsLogin(true);
       }
     } catch (err) {
-      setError("Đã xảy ra lỗi. Vui lòng thử lại!");
+      setError(err.message);
     } finally {
       setLoading(false);
     }
