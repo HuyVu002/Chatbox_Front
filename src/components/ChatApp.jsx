@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from "react";
 import "bootstrap/dist/css/bootstrap.min.css";
 import { FaAddressBook, FaCog } from "react-icons/fa";
-import { useNavigate } from "react-router-dom"; // Import điều hướng
+import { useNavigate } from "react-router-dom"; 
 import supabase from "./supabaseClient";
 
 const contacts = [
@@ -11,7 +11,7 @@ const contacts = [
 ];
 
 function ChatApp() {
-  const navigate = useNavigate(); // Hook điều hướng
+  const navigate = useNavigate(); 
   const [selectedChat, setSelectedChat] = useState(() => {
     return JSON.parse(localStorage.getItem("selectedChat")) || contacts[0];
   });
@@ -26,7 +26,7 @@ function ChatApp() {
     sessionStorage.clear();
   
     navigate("/", { replace: true });
-    window.history.pushState(null, null, "/"); // Ngăn back lại
+    window.history.pushState(null, null, "/");
     window.location.reload();
   };
   
