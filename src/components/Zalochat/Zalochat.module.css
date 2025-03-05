@@ -1,0 +1,393 @@
+.Container_cc>div{
+
+    min-height: 100vh;
+}
+
+.small_col {
+    flex: 0 0 10%; /* Cột chiếm 15% */
+}
+
+.flex_grow_1 {
+    flex: 1; /* Cột này sẽ chiếm hết phần còn lại */
+}
+
+.TimKiem_Div{
+    height: 100vh;
+    flex-direction: column;
+    border-right: 1px solid rgb(171, 171, 171);
+   
+}
+
+.Timkiem{
+    border-bottom: 1px solid rgb(171, 171, 171);
+    
+}
+
+.TimKiem_Chucnang{
+    display: flex;
+}
+
+.TimKiem_Chucnang {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px;
+}
+
+.SearchBox {
+    display: flex;
+    align-items: center;
+    background-color: #f0f1f4;
+    border-radius: 8px;
+    padding: 8px 12px;
+    flex-grow: 1;
+}
+
+.SearchBox input {
+    border: none;
+    outline: none;
+    background: transparent;
+    margin-left: 8px;
+    font-size: 14px;
+}
+
+.IconWrapper {
+    display: flex;
+    gap: 10px;
+}
+
+.IconWrapper svg {
+    cursor: pointer;
+}
+
+
+.listContainer {
+    display: flex;
+    flex-direction: column;
+    /* gap: 10px; */
+    width: 100%;
+    /* max-height: 90vh; */
+    /* overflow-y: auto; */
+}
+  
+.userContainer {
+    display: flex;
+    align-items: center;
+    padding: 10px 20px;
+/* border-radius: 10px; */
+    transition: background 0.3s;
+}
+
+.userContainer:hover {
+background: #f0f0f0;
+}
+
+.avatarWrapper {
+margin-right: 10px;
+}
+
+.avatar {
+width: 50px;
+height: 50px;
+border-radius: 50%;
+object-fit: cover;
+border: 1px solid rgb(78, 78, 78);
+}
+
+.chatDetails {
+flex-grow: 1;
+display: flex;
+flex-direction: column;
+}
+
+.chatHeader {
+display: flex;
+justify-content: space-between;
+font-weight: bold;
+}
+
+.userName {
+display: flex;
+align-items: center;
+}
+
+.groupIcon {
+margin-right: 5px;
+color: #555;
+}
+
+.time {
+font-size: 12px;
+color: gray;
+}
+
+.messagePreview {
+font-size: 14px;
+color: #666;
+display: flex;
+align-items: center;
+justify-content: space-between;
+}
+
+.unreadCount {
+background: red;
+color: white;
+font-size: 12px;
+padding: 0.5px 6px;
+border-radius: 10px;
+margin-left: 5px;
+width: 20px;
+height: 20px;
+}
+
+.editIcon {
+font-size: 16px;
+color: gray;
+}
+
+
+
+/*Conten*/
+
+.ConTen_Div{
+    height: 100vh;
+    flex-direction: column;
+}
+
+
+.ConTen_Head {
+    flex: 0 0 7%;
+}
+
+.ConTen_chat {
+    flex: 1; 
+}
+
+.ConTen_GuiTin{
+    flex: 0 0 10%;
+}
+
+
+
+.Header_Conten_Div{
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid rgb(171, 171, 171);
+    padding: 10px;
+}
+
+.Header_Conten_Div p{
+   padding: 0;
+   margin: 0;
+}
+
+
+.Header_Conten_ThongTin{
+    display: flex;
+    justify-content: center;
+    align-items: center;
+
+}
+
+.Header_Conten_HinhANh{
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.Header_Conten_ThongTin_Ten>div{
+    display: flex;
+    margin: 0 10px;
+}
+
+.Header_Conten_ThongTin_Ten_De{
+    font-size: 1.2rem;
+    font-weight: bold;
+   
+    align-items: center;
+}
+
+.Header_Conten_ThongTin_ChuThich{
+    font-size: 0.9rem;
+}
+.Header_Conten_ThongTin_ChuThich p{
+    padding-left: 5px;
+    padding-right: 10px;
+   
+}
+
+.Header_Conten_ThongTin_ChuThich svg{
+    margin: 0;
+    padding: 0;
+    margin-top: 4px;
+    
+}
+
+.Header_Conten_Div_ChucNang svg {
+    font-size: 20px;
+    margin: 5px;
+}
+
+.Chat_Conten{
+    background-color: #ededed;
+    max-height: 80vh;
+    padding: 10px;
+    overflow-y: auto ;
+
+    /* height: 100vh; */
+}
+
+
+/* Ẩn thanh cuộn ngang nhưng vẫn cuộn được */
+.Chat_Conten::-webkit-scrollbar {
+    width: 8px;  /* Độ rộng thanh cuộn dọc */
+    height: 0px; /* Ẩn thanh cuộn ngang */
+}
+
+/* Màu nền thanh cuộn */
+.Chat_Conten::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 10px;
+}
+
+/* Màu thanh cuộn */
+.Chat_Conten::-webkit-scrollbar-thumb {
+    background: #c1c1c1;
+    border-radius: 10px;
+}
+
+/* Hover vào thanh cuộn */
+.Chat_Conten::-webkit-scrollbar-thumb:hover {
+    background: #888;
+}
+
+.TinNhan_Conten{
+    width: 100%;
+    margin: 10px;
+    /* height: 100vh  ;  */
+    /* overflow-y: auto ; 
+    display: flex; 
+    flex-direction: column;  */
+
+    display: flex;
+    
+}
+
+
+
+
+.TinNhan_Conten>div{
+   display: flex;
+ 
+}
+
+.TinNhan_Conten_HinhANh>img{
+    width: 50px;
+    height: 50px;
+    object-fit: cover;
+    border-radius: 50%;
+    border: 1px solid rgb(130, 128, 128);
+}
+
+.TinNhan_User{
+    width: 90%;
+
+}
+
+.TinNhan_User>div{
+    margin:0 5px 0 5px;
+}
+
+.TinNhan_Conten_Conten{
+    max-width: 60%;
+    /* background-color: #ededed; */
+    padding: 10px 9px;
+    background-color: white;
+    border: 1px solid rgb(227, 227, 227);
+    border-radius: 5px;
+    box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.1);
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+}
+.TinNhan_Conten_Conten>div{
+    margin: 2px 0;
+
+}
+
+.TinNhan_Conten_Conten_Ten{
+    font-size: 0.8rem;
+    color: #666;
+}
+
+.TinNhan_Conten_Conten_Gio{
+    font-size: 0.6rem;
+    color: #666;
+}
+
+.ConTen_Div{
+    flex-wrap:none;
+}
+
+
+
+.messageInputContainer {
+    display: flex;
+    align-items: center;
+    border: 1px solid #ccc;
+    border-radius: 20px;
+    padding: 8px 12px;
+    background-color: #f5f5f5;
+}
+
+.inputField {
+    flex: 1;
+    border: none;
+    outline: none;
+    background: transparent;
+    padding: 5px;
+    font-size: 14px;
+}
+
+.iconButton {
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    margin: 0 5px;
+    font-size: 18px;
+    color: #555;
+}
+
+.iconButton:hover {
+    color: black;
+}
+
+
+.Gui_Conten{
+
+  min-width: 90%;
+}
+.GuiTin{
+    padding: 0;
+    background-color: rgb(255, 255, 255) !important;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    border-top: 1px solid black;
+
+}
+
+
+/* Mình Nhắn */
+
+.minhGui{
+    background-color: rgb(185, 226, 250);
+    border: 1px solid rgb(21, 26, 179);
+}
+.huongGui{
+    
+    justify-content: right;
+    right:10px;
+
+
+}
