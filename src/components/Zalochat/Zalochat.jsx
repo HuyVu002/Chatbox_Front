@@ -14,12 +14,21 @@ import { IoMdSearch } from "react-icons/io";
 import { BsEmojiSmile, BsPaperclip } from "react-icons/bs";
 import { MdSend } from "react-icons/md";
 
+import { useState, useEffect } from "react";
+
+
+///
+import io from "socket.io-client";
+
+const socket = io("http://localhost:4000");
+
+
 
 
 ///ChucNang
 
 
-function TinNhan(){
+function TinNhan({id_user,Conten,time}){
     return (
     <div className={`${styles.TinNhan_Conten} ${styles.huongGui}`} >
         <div className={`${styles.TinNhan_User} `} >
@@ -65,27 +74,49 @@ function Header_Conten(){
 }
 
 function Chat_Conten(){
+
+
+    const [messages, setMessages] = useState([]);
+  
+    // Lắng nghe tin nhắn từ server
+    useEffect(() => {
+      socket.on("receive_message", (data) => {
+        setMessages((prev) => [...prev, data]);
+      });
+  
+      return () => socket.off("receive_message");
+    }, []);
+
+    console.log(messages)
+
     return(<>
         <div className={styles.Chat_Conten} >
-            <TinNhan/>
-            <TinNhan/>
-            <TinNhan/>
-            <TinNhan/>
-            <TinNhan/>
-            <TinNhan/>
-            <TinNhan/>
-            <TinNhan/>
-            <TinNhan/>
-            <TinNhan/>  
+            {messages.map((msg, index) => (
+                <TinNhan
+                    key={index} // Nên có key để React tối ưu
+                    id_user={msg.id_user}
+                    Conten={msg.Conten}
+                    time={msg.time}
+                />
+            ))}
         </div>
     </>)
 }
 
 function Gui_Conten(){
+    const [message, setMessage] = useState("");
+    const sendMessage = () => {
+        const messageData = {
+            room:"room1", // Gửi tin vào nhóm nào
+            id_user: "User1",
+            Conten: "Hello nhóm!",
+            time: new Date().toLocaleTimeString()
+        };
+        socket.emit("send_message", messageData);
+    };
+
     return(<>
         <div className={styles.Gui_Conten}>
-
-    
             <div className={styles.messageInputContainer}>
                 <button className={styles.iconButton}>
                     <BsEmojiSmile />
@@ -97,8 +128,9 @@ function Gui_Conten(){
                     type="text"
                     className={styles.inputField}
                     placeholder="Nhập tin nhắn..."
+                    onChange={(e) => setMessage(e.target.value)}
                 />
-                <button className={styles.iconButton}>
+                <button onClick={sendMessage} className={styles.iconButton}>
                     <MdSend />
                 </button>
             </div>
@@ -257,6 +289,16 @@ function Slider_kien(){
 
 
 function Layout(){
+    
+    const [room, setRoom] = useState("room1"); 
+
+    useEffect(() => {
+        socket.emit("join_room", room);
+    }, [room]);
+
+
+
+
     return(
         <>
                 <Container fluid >
