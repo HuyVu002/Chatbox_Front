@@ -2,11 +2,14 @@ import { initializeApp } from "firebase/app";
 import { getAuth } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
 import { getStorage } from "firebase/storage";
+import { getDatabase } from "firebase/database";
 
 const firebaseConfig = {
     apiKey: "AIzaSyDHo11NvSMotMkiXRRWpePbBbDA3wmcgIk",
 
     authDomain: "fir-89e73.firebaseapp.com",
+
+    databaseURL: "https://fir-89e73-default-rtdb.asia-southeast1.firebasedatabase.app/",
   
     projectId: "fir-89e73",
   
@@ -22,7 +25,7 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
-const db = getFirestore(app);
+const db = getDatabase(app);
 const storage = getStorage(app);
 
 export { auth, db, storage };
