@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
-import { auth } from "./components/firebaseClient";
-import Auth from "./components/Auth";
+import { auth } from "./components/ConnectFireBase/firebaseClient";
+import Auth from "./components/Login_Logout/Auth";
 import ChatApp from "./components/ChatApp";
 import { onAuthStateChanged } from "firebase/auth";
 import Zalo_Main from "./components/Zalochat/Zalochat";

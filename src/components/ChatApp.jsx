@@ -5,7 +5,7 @@ import { useNavigate } from "react-router-dom";
 import { getAuth, signOut, onAuthStateChanged } from "firebase/auth";
 import { getFirestore, collection, addDoc, query, orderBy, onSnapshot } from "firebase/firestore";
 import { getStorage, ref, uploadBytes, getDownloadURL } from "firebase/storage";
-import "./firebaseClient";
+import "./ConnectFireBase/firebaseClient";
 
 const contacts = [
   { id: 1, name: "Nguyễn Văn A", avatar: "https://hoanghamobile.com/tin-tuc/wp-content/uploads/2024/09/hinh-anh-dong-52.jpg" },
