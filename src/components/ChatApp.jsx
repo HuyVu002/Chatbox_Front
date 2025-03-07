@@ -87,7 +87,13 @@ function ChatApp() {
           </button>
           {showSettings && (
             <div ref={settingsRef} className="settings-menu position-absolute bg-white text-dark p-2 rounded shadow" style={{ top: "160px", left: "135px", transform: "translateX(-50%)", minWidth: "180px", zIndex: 1000 }}>
-              <p className="mb-2 m-0 p-2 bg-light rounded">Thông tin tài khoản</p>
+              <p className="mb-2 m-0 p-2 bg-light rounded text-primary" 
+                style={{ cursor: "pointer" }} 
+                onClick={() => navigate("/update_infor")}
+              >
+                Thông tin tài khoản
+              </p>
+
               <p className="mb-0 m-0 p-2 bg-light rounded text-danger" onClick={handleLogout} style={{ cursor: "pointer" }}>Đăng xuất</p>
             </div>
           )}
