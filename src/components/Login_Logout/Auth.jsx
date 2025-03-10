@@ -68,7 +68,7 @@ function Auth() {
           return;
         }
   
-        navigate("/chat");
+        navigate("/chat_main");
   
       } else {
         // Kiểm tra xem email đã tồn tại chưa trước khi đăng ký
