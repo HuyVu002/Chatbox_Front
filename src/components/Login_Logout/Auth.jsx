@@ -1,16 +1,24 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import "bootstrap/dist/css/bootstrap.min.css";
-import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, sendEmailVerification } from "firebase/auth";
-import "./firebaseClient"; // Đảm bảo Firebase đã được khởi tạo
+import {
+  getAuth,
+  createUserWithEmailAndPassword,
+  signInWithEmailAndPassword,
+  sendEmailVerification,
+} from "firebase/auth";
+import { getDatabase, ref, set } from "firebase/database";
+import "../ConnectFireBase/firebaseClient";
 
 function Auth() {
   const navigate = useNavigate();
   const auth = getAuth();
+  const db = getDatabase();
   const [isLogin, setIsLogin] = useState(true);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [nickname, setNickname] = useState("");
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
@@ -38,7 +46,17 @@ function Auth() {
       } else {
         const userCredential = await createUserWithEmailAndPassword(auth, email, password);
         await sendEmailVerification(userCredential.user);
-        setMessage("🎉 Chúc mừng! Vui lòng kiểm tra email để xác thực tài khoản.");
+        
+        // Lưu thông tin user vào Firebase Realtime Database
+        await set(ref(db, `users/${userCredential.user.uid}`), {
+          email: email,
+          displayName: nickname,
+          createdAt: new Date().toISOString(),
+          listfriend: "null",
+          add_friend:"null"
+        });
+
+        setMessage("🎉 Vui lòng kiểm tra email để xác thực tài khoản.");
         setIsLogin(true);
       }
     } catch (err) {
@@ -50,7 +68,7 @@ function Auth() {
 
   return (
     <div className="auth-container d-flex justify-content-center bg-primary-subtle align-items-center vh-100">
-      <div className="auth-box p-5 rounded shadow bg-white text-center" style={{ width: "500px", height: "500px" }}>
+      <div className="auth-box p-5 rounded shadow bg-white text-center" style={{ width: "500px", height: "550px" }}>
         <h2 className="text-primary">Zalo</h2>
         <p className="text-muted">{isLogin ? "Đăng nhập" : "Đăng ký"} tài khoản Zalo</p>
         {message && <p className="text-success">{message}</p>}
@@ -77,16 +95,28 @@ function Auth() {
             />
           </div>
           {!isLogin && (
-            <div className="mb-3">
-              <input
-                type="password"
-                className="form-control"
-                placeholder="Nhập lại mật khẩu"
-                value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
-                required
-              />
-            </div>
+            <>
+              <div className="mb-3">
+                <input
+                  type="password"
+                  className="form-control"
+                  placeholder="Nhập lại mật khẩu"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  required
+                />
+              </div>
+              <div className="mb-3">
+                <input
+                  type="text"
+                  className="form-control"
+                  placeholder="Nickname"
+                  value={nickname}
+                  onChange={(e) => setNickname(e.target.value)}
+                  required
+                />
+              </div>
+            </>
           )}
           <button type="submit" className="btn btn-primary w-100" disabled={loading}>
             {loading ? "Đang xử lý..." : isLogin ? "Đăng nhập" : "Đăng ký"}
