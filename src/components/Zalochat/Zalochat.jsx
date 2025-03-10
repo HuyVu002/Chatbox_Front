@@ -27,7 +27,7 @@ import io from "socket.io-client";
 
 const socket = io("http://localhost:4000");
 
-
+import { auth, db, storage } from '../firebaseClient';
 
 
 ///ChucNang
@@ -232,7 +232,7 @@ function From_KetBan(){
     const [List_users,setList_users] = useState([]);
     const [search, setSearch] = useState("");
     const [selectedUsers, setSelectedUsers] = useState([]);
-
+    
     const toggleUserSelection = (id) => {
     setSelectedUsers((prev) =>
         prev.includes(id) ? prev.filter((uid) => uid !== id) : [...prev, id]
@@ -242,7 +242,7 @@ function From_KetBan(){
     
     console.log(List_users.map(user => user.id));
     const Call_Gmail = async (input) => {
-        const db = getDatabase();
+        // const db = getDatabase();
         const snapshot = await get(ref(db, "users"));
 
         if (snapshot.exists()) {
