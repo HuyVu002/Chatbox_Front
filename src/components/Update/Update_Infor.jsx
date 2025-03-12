@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
-import { getAuth } from "firebase/auth";
-import { getDatabase, ref, get, update } from "firebase/database";
+import { getAuth, updatePassword, reauthenticateWithCredential, EmailAuthProvider, deleteUser } from "firebase/auth";
+import { getDatabase, ref, get, update, remove } from "firebase/database";
 import { useNavigate } from "react-router-dom";
 import "bootstrap/dist/css/bootstrap.min.css";
 
@@ -13,12 +13,15 @@ function Update_Info() {
   // States for user info
   const [email, setEmail] = useState("");
   const [avatar, setAvatar] = useState("https://hoanghamobile.com/tin-tuc/wp-content/uploads/2024/09/hinh-anh-dong-52.jpg");
-  const [newEmail, setNewEmail] = useState("");
-  const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState(""); // New state for confirming password
+  const [currentPassword, setCurrentPassword] = useState("");
   const [selectedFile, setSelectedFile] = useState(null);
   const [isUploading, setIsUploading] = useState(false);
   const [editingPassword, setEditingPassword] = useState(false);
+  const [newDisplayName, setNewDisplayName] = useState(""); // New state for display name
+  const [currentDisplayName, setCurrentDisplayName] = useState(""); // State for current display name
+  const [isEditingDisplayName, setIsEditingDisplayName] = useState(false); // For toggling between display name edit mode
 
   // Fetch user data from Realtime Database when the component mounts
   useEffect(() => {
@@ -28,8 +31,9 @@ function Update_Info() {
         const snapshot = await get(userRef);
         if (snapshot.exists()) {
           const userData = snapshot.val();
-          setEmail(userData.email);
-          setAvatar(userData.photoURL || avatar);
+          setEmail(userData.email); // Email is fetched but not editable
+          setAvatar(userData.photoURL || avatar); // Use existing avatar or default one
+          setCurrentDisplayName(userData.displayName || "Tên hiển thị chưa có"); // Default to "Tên hiển thị chưa có" if not set
         } else {
           console.error("User data not found in the database");
         }
@@ -88,49 +92,76 @@ function Update_Info() {
     }
   };
 
-  // Handle email update
-  const handleUpdateEmail = async () => {
-    if (newEmail.trim() === "") return;
-
-    try {
-      await update(ref(db, `users/${user.uid}`), { email: newEmail });
-      setEmail(newEmail); // Update local state with new email
-      alert("Email đã được cập nhật thành công!");
-    } catch (error) {
-      alert("Lỗi: " + error.message);
-    }
-  };
-
-  // Handle password update
+  // Handle password update in Firebase Authentication (no password in DB)
   const handleUpdatePassword = async () => {
-    if (newPassword.trim() === "" || currentPassword.trim() === "") return;
+    if (newPassword.trim() === "" || confirmPassword.trim() === "" || currentPassword.trim() === "") {
+      alert("Vui lòng nhập đầy đủ thông tin.");
+      return;
+    }
+
+    if (newPassword !== confirmPassword) {
+      alert("Mật khẩu mới và mật khẩu xác nhận không khớp!");
+      return;
+    }
 
     try {
-      const userRef = ref(db, `users/${user.uid}`);
-      await update(ref(db, `users/${user.uid}`), { password: newPassword });
+      // Reauthenticate the user before updating the password in Firebase Authentication
+      const credential = EmailAuthProvider.credential(user.email, currentPassword);
+      await reauthenticateWithCredential(user, credential);
+
+      // Update password in Firebase Authentication
+      await updatePassword(user, newPassword);
+
       alert("Mật khẩu đã được cập nhật thành công!");
-      setEditingPassword(false);
+      setEditingPassword(false); // Hide password edit form
+    } catch (error) {
+      if (error.code === 'auth/invalid-credential') {
+        alert("Mật khẩu hiện tại không đúng! Vui lòng nhập lại.");
+      } else {
+        alert("Lỗi: " + error.message);
+      }
+    }
+  };
+
+  // Handle display name update
+  const handleUpdateDisplayName = async () => {
+    if (newDisplayName.trim() === "") return;
+
+    try {
+      // Update the display name in Firebase Realtime Database
+      await update(ref(db, `users/${user.uid}`), { displayName: newDisplayName });
+
+      // Update the display name locally
+      setCurrentDisplayName(newDisplayName);
+      alert("Tên hiển thị đã được cập nhật thành công!");
+      setNewDisplayName(""); // Clear input field after update
+      setIsEditingDisplayName(false); // Exit edit mode
     } catch (error) {
       alert("Lỗi: " + error.message);
     }
   };
 
-  // Handle account deletion
+  // Handle account deletion (remove user data and authentication)
   const handleDeleteAccount = async () => {
     if (window.confirm("Bạn có chắc chắn muốn xóa tài khoản không?")) {
       try {
-        await update(ref(db, `users/${user.uid}`), { isDeleted: true });  // Soft delete the user in DB
+        // Remove user data from Realtime Database
+        await remove(ref(db, `users/${user.uid}`));
+
+        // Delete the user from Firebase Authentication
+        await deleteUser(user);
+
         alert("Tài khoản đã bị xóa");
-        navigate("/");
+        navigate("/"); // Redirect to home or login page
       } catch (error) {
         alert("Lỗi: " + error.message);
       }
     }
   };
 
-  // Handle back to chat
+  // Handle back to chat_main
   const handleBack = () => {
-    navigate("/chat");
+    navigate("/chat_main"); // Navigate to the /chat_main route
   };
 
   return (
@@ -159,16 +190,29 @@ function Update_Info() {
           />
         </div>
 
-        {/* Email update */}
+        {/* Display name */}
         <div className="mb-3">
-          <label>Email mới:</label>
-          <input
-            type="email"
-            className="form-control"
-            value={newEmail}
-            onChange={(e) => setNewEmail(e.target.value)}
-          />
-          <button className="btn btn-success mt-2 w-100" onClick={handleUpdateEmail}>Cập nhật email</button>
+          <label><strong>Tên hiển thị:</strong></label>
+          <p>{currentDisplayName}</p>
+          
+          {/* Button to edit display name */}
+          {!isEditingDisplayName ? (
+            <button className="btn btn-primary w-100 mt-2" onClick={() => setIsEditingDisplayName(true)}>
+              Thay đổi tên hiển thị
+            </button>
+          ) : (
+            <div>
+              <input
+                type="text"
+                className="form-control"
+                value={newDisplayName}
+                onChange={(e) => setNewDisplayName(e.target.value)}
+                placeholder="Nhập tên hiển thị mới"
+              />
+              <button className="btn btn-success mt-2 w-100" onClick={handleUpdateDisplayName}>Cập nhật tên hiển thị</button>
+              <button className="btn btn-secondary mt-2 w-100" onClick={() => setIsEditingDisplayName(false)}>Hủy</button>
+            </div>
+          )}
         </div>
 
         {/* Change password button */}
@@ -193,9 +237,18 @@ function Update_Info() {
                 value={newPassword}
                 onChange={(e) => setNewPassword(e.target.value)}
               />
-              <button className="btn btn-success mt-2 w-100" onClick={handleUpdatePassword}>Xác nhận thay đổi</button>
             </div>
-            <button className="btn btn-secondary w-100" onClick={() => setEditingPassword(false)}>Hủy</button>
+            <div className="mb-3">
+              <label>Xác nhận mật khẩu mới:</label>
+              <input
+                type="password"
+                className="form-control"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+              />
+            </div>
+            <button className="btn btn-success mt-2 w-100" onClick={handleUpdatePassword}>Xác nhận thay đổi</button>
+            <button className="btn btn-secondary w-100 mt-2" onClick={() => setEditingPassword(false)}>Hủy</button>
           </div>
         )}
 
