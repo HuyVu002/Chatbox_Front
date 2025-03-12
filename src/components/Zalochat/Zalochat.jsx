@@ -9,12 +9,19 @@ import InputGroup from 'react-bootstrap/InputGroup';
 
 import styles from '../Zalochat/Zalochat.module.css'; 
 import { FaSearch, FaUserPlus, FaUsers,FaRegEdit } from "react-icons/fa";
-import { CiUser,CiVideoOn } from "react-icons/ci";
+import { CiUser,CiVideoOn } from "react-icons/ci";  
+import { BiListUl } from "react-icons/bi";
 import { IoMdSearch } from "react-icons/io";
 import { BsEmojiSmile, BsPaperclip } from "react-icons/bs";
 import { MdSend } from "react-icons/md";
+ 
+import { IoSettings } from 'react-icons/io5';  
+import { useState, useRef, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { signOut } from "firebase/auth";
+ 
 
-import { useState, useEffect } from "react";
+
 
 import { Form, Button, Card, Image, ListGroup } from "react-bootstrap";
 
@@ -27,13 +34,12 @@ import io from "socket.io-client";
 
 const socket = io("http://localhost:4000");
 
-import { auth, db, storage } from '../ConnectFireBase/firebaseClient';
+import { auth, db, storage } from '../firebaseClient';
 
 
 ///ChucNang
 
 import { getDatabase, ref, get } from "firebase/database";
-
 
 
 
@@ -76,7 +82,7 @@ function Header_Conten(){
             <div className={styles.Header_Conten_Div_ChucNang}>
                 <FaUserPlus />
                 <CiVideoOn />
-                <IoMdSearch />
+                <BiListUl />
             </div>
         </div>
     </>)
@@ -96,7 +102,7 @@ function Chat_Conten(){
       return () => socket.off("receive_message");
     }, []);
 
-    console.log(messages)
+ 
 
     return(<>
         <div className={styles.Chat_Conten} >
@@ -230,35 +236,80 @@ function FromTaoNhom(){
 function From_KetBan(){
 
     const [users,setusers] = useState([]);
-    const [List_users,setList_users] = useState([]);
+    const [List_users,setList_users] = useState({});
     const [search, setSearch] = useState("");
     const [selectedUsers, setSelectedUsers] = useState([]);
+
+    ///CallNguoiGuiLoiMoi
+
+
+    const [add_friend,set_add_friend] = useState([]);
+
+    
+
     
     const toggleUserSelection = (id) => {
     setSelectedUsers((prev) =>
         prev.includes(id) ? prev.filter((uid) => uid !== id) : [...prev, id]
     );
     };
+
     
+    const GuiLoimoi = async (user_id) => {
+        if (!auth.currentUser) {
+            console.log("Người dùng chưa đăng nhập!");
+            return;
+        }
     
-    console.log(List_users.map(user => user.id));
+        const currentUserID = auth.currentUser.uid; // ID của người đang gửi lời mời kết bạn
+        const userRef = ref(db, `users/${user_id}/add_friend`); // Đường dẫn đến danh sách add_friend của user_id
+    
+        try {
+            const snapshot = await get(userRef);
+            let currentFriends = snapshot.exists() ? snapshot.val() : [];
+    
+            if (!Array.isArray(currentFriends)) {
+                currentFriends = [];
+            }
+    
+            if (!currentFriends.includes(currentUserID)) {
+                currentFriends.push(currentUserID); // Thêm ID của mình vào danh sách add_friend
+                await update(ref(db, `users/${user_id}`), { add_friend: currentFriends }); // Cập nhật dữ liệu vào Firebase
+                alert("Bạn đã gửi lời mời thành công")
+                console.log("Đã gửi lời mời kết bạn!");
+            } else {
+                alert("Bạn đã gửi lời mời kết bạn trước đó")
+                console.log("Bạn đã gửi lời mời kết bạn trước đó!");
+            }
+        } catch (error) {
+            console.error("Lỗi khi gửi lời mời kết bạn:", error);
+        }
+    };
+
+    
+    // console.log(List_users.map(user => user.id));
+  
+
     const Call_Gmail = async (input) => {
         // const db = getDatabase();
         const snapshot = await get(ref(db, "users"));
 
         if (snapshot.exists()) {
           let foundUser = null;
-          
+          setList_users({});
           snapshot.forEach((childSnapshot) => {
             const userData = childSnapshot.val();
             if (userData.email === input) {
               foundUser = { id: childSnapshot.key, ...userData };
-              setList_users(foundUser.value)
+             
+      
             }
           });
       
           if (foundUser) {
             console.log("Gmail found:", foundUser);
+            setList_users(foundUser)
+     
           } else {
             console.log("Gmail not found");
           }
@@ -280,14 +331,22 @@ function From_KetBan(){
             </Form.Group>
            
             <ListGroup className="mb-3" style={{ maxHeight: "200px", overflowY: "auto" }}>
-                {List_users
-                .map((user) => (
-                    <ListGroup.Item key={user.id} className="d-flex align-items-center">
-                        <Button key={user.id} variant="info" >Thêm Bạn</Button>
-                        {/* <Image   src={user.avatar} roundedCircle width={30} height={30} style={{ objectFit: "cover" }} className="ms-2" /> */}
-                        <span className="ms-3">{user.name}</span>
+            {Object.keys(List_users).length > 0 && List_users.id !== auth.currentUser?.uid && (
+                    <ListGroup.Item key={List_users.id} className="d-flex align-items-center">
+                       <Button key={List_users.id} onClick={() => GuiLoimoi(List_users.id)} variant="info">Thêm Bạn</Button>
+                        <span className="ms-3">{List_users.email}</span>
                     </ListGroup.Item>
-                ))}
+                )}
+              
+            </ListGroup>
+            <ListGroup className="mb-3" style={{ maxHeight: "200px", overflowY: "auto" }}>
+          
+                    <ListGroup.Item key={List_users.id} className="d-flex align-items-center">
+                        <Button key={List_users.id} onClick={() => GuiLoimoi(List_users.id)} variant="info">Chấp Nhận lời mời</Button>
+                        <span className="ms-3">{List_users.email}</span>
+                    </ListGroup.Item>
+            
+              
             </ListGroup>
             <div className="d-flex justify-content-end gap-2">
                 <Button variant="secondary">Thoát</Button>
@@ -296,33 +355,84 @@ function From_KetBan(){
     </>)
 }
 
-function TimKiem(){
+function TimKiem() {
+    const [showSettings, setShowSettings] = useState(false);
+    const settingsRef = useRef(null);
+    const navigate = useNavigate();
 
-    return(
-    <>
-       <div className={styles.TimKiem_Chucnang}>
-            {/* Ô tìm kiếm */}
-            <div className={styles.SearchBox}>
-                <FaSearch />
-                <input type="text" placeholder="Tìm kiếm" />
-            </div>
-            {/* Icon chức năng */}
-            <div className={styles.IconWrapper}>
-                <FaUserPlus />
-                <FaUsers />
-            </div>
+    const toggleSettings = () => setShowSettings(!showSettings);
 
-            <div className={styles.ChucNangCoBan} >
-                {/* <div className={styles.TaoNhom}>
-                    <FromTaoNhom/>
-                </div> */}
-                <div className={styles.TaoNhom}>
-                    <From_KetBan/>
+    useEffect(() => {
+        const handleClickOutside = (event) => {
+            if (settingsRef.current && !settingsRef.current.contains(event.target)) {
+                setShowSettings(false);
+            }
+        };
+
+        document.addEventListener("mousedown", handleClickOutside);
+        return () => {
+            document.removeEventListener("mousedown", handleClickOutside);
+        };
+    }, []);
+
+    const handleLogout = () => {
+        
+        localStorage.removeItem("userToken");  
+        localStorage.removeItem("userInfo");   
+    
+      
+        navigate("/"); 
+    };
+
+    return (
+        <>
+            <div className={styles.TimKiem_Chucnang}>
+                <div className={styles.SearchBox}>
+                    <FaSearch />
+                    <input type="text" placeholder="Tìm kiếm" />
+                </div>
+
+                <div className={styles.IconWrapper} style={{ position: "relative" }}>
+                    <FaUserPlus />
+                    <FaUsers />
+                    <IoSettings onClick={toggleSettings} style={{ cursor: "pointer" }} />
+                    
+                    {/* Settings Menu */}
+                    {showSettings && (
+                        <div 
+                            ref={settingsRef} 
+                            className="settings-menu position-absolute bg-white text-dark p-2 rounded shadow" 
+                            style={{
+                                top: "calc(100% + 10px)",  // Position the settings menu below the icons
+                                left: "50%",  // Center horizontally
+                                transform: "translateX(-50%)", // Center it exactly under the icons
+                                minWidth: "180px", 
+                                zIndex: 1000
+                            }}
+                        >
+                            <p 
+                                className="mb-2 m-0 p-2 bg-light rounded text-primary" 
+                                style={{ cursor: "pointer" }} 
+                                onClick={() => navigate("/update_infor")}
+                            >
+                                Thông tin tài khoản
+                            </p>
+
+                            <p 
+                                className="mb-0 m-0 p-2 bg-light rounded text-danger" 
+                                onClick={handleLogout} 
+                                style={{ cursor: "pointer" }}
+                            >
+                                Đăng xuất
+                            </p>
+                        </div>
+                    )}
                 </div>
             </div>
-        </div>
-    </>)
+        </>
+    );
 }
+
 
 
 function The_User({ avatar, name, lastMessage, time, unread }) {
