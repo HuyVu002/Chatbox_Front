@@ -187,10 +187,37 @@ function Auth() {
           >
             {isLogin ? "Đăng ký ngay" : "Đăng nhập"}
           </span>
+          {isLogin && (
+  <p className="mt-2">
+    <span
+      className="text-primary cursor-pointer"
+      style={{ cursor: "pointer" }}
+      onClick={() => setShowResetPassword(true)}
+    >
+      Quên mật khẩu?
+    </span>
+  </p>
+)}
+
         </p>
       </div>
     </div>
   );
 }
+// import { sendPasswordResetEmail } from "firebase/auth";
+
+// const [showResetPassword, setShowResetPassword] = useState(false);
+// const [resetEmail, setResetEmail] = useState("");
+// const [resetMessage, setResetMessage] = useState("");
+
+// const handleResetPassword = async () => {
+//   try {
+//     await sendPasswordResetEmail(auth, resetEmail);
+//     setResetMessage("📩 Kiểm tra email để đặt lại mật khẩu.");
+//   } catch (err) {
+//     setResetMessage("❌ Email không tồn tại trong hệ thống.");
+//   }
+// };
+
 
 export default Auth;
