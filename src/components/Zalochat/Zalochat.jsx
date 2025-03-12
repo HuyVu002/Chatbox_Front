@@ -9,12 +9,19 @@ import InputGroup from 'react-bootstrap/InputGroup';
 
 import styles from '../Zalochat/Zalochat.module.css'; 
 import { FaSearch, FaUserPlus, FaUsers,FaRegEdit } from "react-icons/fa";
-import { CiUser,CiVideoOn    } from "react-icons/ci";
+import { CiUser,CiVideoOn } from "react-icons/ci";  
+import { BiListUl } from "react-icons/bi";
 import { IoMdSearch } from "react-icons/io";
 import { BsEmojiSmile, BsPaperclip } from "react-icons/bs";
 import { MdSend } from "react-icons/md";
+ 
+import { IoSettings } from 'react-icons/io5';  
+import { useState, useRef, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { signOut } from "firebase/auth";
+ 
 
-import { useState, useEffect } from "react";
+
 
 import { Form, Button, Card, Image, ListGroup } from "react-bootstrap";
 
@@ -78,7 +85,7 @@ function Header_Conten(){
             <div className={styles.Header_Conten_Div_ChucNang}>
                 <FaUserPlus />
                 <CiVideoOn />
-                <IoMdSearch />
+                <BiListUl />
             </div>
         </div>
     </>)
@@ -351,33 +358,84 @@ function From_KetBan(){
     </>)
 }
 
-function TimKiem(){
+function TimKiem() {
+    const [showSettings, setShowSettings] = useState(false);
+    const settingsRef = useRef(null);
+    const navigate = useNavigate();
 
-    return(
-    <>
-       <div className={styles.TimKiem_Chucnang}>
-            {/* Ô tìm kiếm */}
-            <div className={styles.SearchBox}>
-                <FaSearch />
-                <input type="text" placeholder="Tìm kiếm" />
-            </div>
-            {/* Icon chức năng */}
-            <div className={styles.IconWrapper}>
-                <FaUserPlus />
-                <FaUsers />
-            </div>
+    const toggleSettings = () => setShowSettings(!showSettings);
 
-            <div className={styles.ChucNangCoBan} >
-                {/* <div className={styles.TaoNhom}>
-                    <FromTaoNhom/>
-                </div> */}
-                <div className={styles.TaoNhom}>
-                    <From_KetBan/>
+    useEffect(() => {
+        const handleClickOutside = (event) => {
+            if (settingsRef.current && !settingsRef.current.contains(event.target)) {
+                setShowSettings(false);
+            }
+        };
+
+        document.addEventListener("mousedown", handleClickOutside);
+        return () => {
+            document.removeEventListener("mousedown", handleClickOutside);
+        };
+    }, []);
+
+    const handleLogout = () => {
+        
+        localStorage.removeItem("userToken");  
+        localStorage.removeItem("userInfo");   
+    
+      
+        navigate("/"); 
+    };
+
+    return (
+        <>
+            <div className={styles.TimKiem_Chucnang}>
+                <div className={styles.SearchBox}>
+                    <FaSearch />
+                    <input type="text" placeholder="Tìm kiếm" />
+                </div>
+
+                <div className={styles.IconWrapper} style={{ position: "relative" }}>
+                    <FaUserPlus />
+                    <FaUsers />
+                    <IoSettings onClick={toggleSettings} style={{ cursor: "pointer" }} />
+                    
+                    {/* Settings Menu */}
+                    {showSettings && (
+                        <div 
+                            ref={settingsRef} 
+                            className="settings-menu position-absolute bg-white text-dark p-2 rounded shadow" 
+                            style={{
+                                top: "calc(100% + 10px)",  // Position the settings menu below the icons
+                                left: "50%",  // Center horizontally
+                                transform: "translateX(-50%)", // Center it exactly under the icons
+                                minWidth: "180px", 
+                                zIndex: 1000
+                            }}
+                        >
+                            <p 
+                                className="mb-2 m-0 p-2 bg-light rounded text-primary" 
+                                style={{ cursor: "pointer" }} 
+                                onClick={() => navigate("/update_infor")}
+                            >
+                                Thông tin tài khoản
+                            </p>
+
+                            <p 
+                                className="mb-0 m-0 p-2 bg-light rounded text-danger" 
+                                onClick={handleLogout} 
+                                style={{ cursor: "pointer" }}
+                            >
+                                Đăng xuất
+                            </p>
+                        </div>
+                    )}
                 </div>
             </div>
-        </div>
-    </>)
+        </>
+    );
 }
+
 
 
 function The_User({ avatar, name, lastMessage, time, unread }) {
