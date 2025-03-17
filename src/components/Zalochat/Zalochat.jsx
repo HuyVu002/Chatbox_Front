@@ -857,6 +857,8 @@ function ThongTin({ groupId }) {
     alert("Đã kick thành viên!");
   };
 
+  console.log(availableUsers)
+
   return (
     <div className="container mt-4">
       <Card className="text-center p-4">
