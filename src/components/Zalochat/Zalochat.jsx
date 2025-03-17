@@ -4,7 +4,7 @@ import Col from 'react-bootstrap/Col';
 import { FaSearch, FaUserPlus, FaUsers, FaRegEdit, FaBell, FaThumbtack, FaCog, FaTrash ,FaSignOutAlt} from "react-icons/fa";
 import { CiUser } from "react-icons/ci";
 import { BsEmojiSmile, BsPaperclip } from "react-icons/bs";
-import { MdSend } from "react-icons/md";
+import { MdSend,MdGroupAdd } from "react-icons/md";
 import { useState, useEffect } from "react";
 import { Form, Button, Card, Image, ListGroup, Modal, InputGroup } from "react-bootstrap";
 import io from "socket.io-client";
@@ -12,6 +12,7 @@ import { auth, db, storage } from '../ConnectFireBase/firebaseClient';
 import { update, ref, get, push, set, onValue, off, remove } from "firebase/database";
 import { ref as storageRef, uploadBytes, getDownloadURL } from "firebase/storage";
 import styles from '../Zalochat/Zalochat.module.css';
+
 import { useNavigate } from 'react-router-dom'; // Import useNavigate
 const socket = io("http://localhost:4000");
 
@@ -863,7 +864,7 @@ function ThongTin({ groupId }) {
             </Button>
             {isAdmin && (
               <Button variant="light" onClick={() => setShowAddMemberModal(true)}>
-                <FaUserPlus />
+                <MdGroupAdd />
               </Button>
             )}
             <Button variant="light">
