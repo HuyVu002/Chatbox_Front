@@ -231,6 +231,7 @@ color: gray;
 
 .Chat_Conten{
     background-color: #ededed;
+    height: 80vh;
     max-height: 80vh;
     padding: 10px;
     overflow-y: auto ;
@@ -429,7 +430,7 @@ color: gray;
 .myMessage>div{
 /* background-color: #002fff;  */
 /* color: white; */
-margin-right: -550px;
+margin-right: -450px;
 }
 
 .myMessage img{
@@ -476,3 +477,7 @@ margin-right: -550px;
     background-color: #218838;
     border-color: #1e7e34;
   }
+
+.cc{
+    border-left:1px solid rgba(0, 0, 0, 0.347);
+}

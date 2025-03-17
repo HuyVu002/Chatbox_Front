@@ -1,7 +1,7 @@
 import Container from 'react-bootstrap/Container';
 import Row from 'react-bootstrap/Row';
 import Col from 'react-bootstrap/Col';
-import { FaSearch, FaUserPlus, FaUsers, FaRegEdit, FaTrash, FaPlus } from "react-icons/fa";
+import { FaSearch, FaUserPlus, FaUsers, FaRegEdit, FaBell, FaThumbtack, FaCog, FaTrash } from "react-icons/fa";
 import { CiUser, CiVideoOn } from "react-icons/ci";
 import { IoMdSearch } from "react-icons/io";
 import { BsEmojiSmile, BsPaperclip } from "react-icons/bs";
@@ -13,6 +13,7 @@ import { auth, db, storage } from '../ConnectFireBase/firebaseClient';
 import { update, ref, get, push, set, onValue, off } from "firebase/database";
 import { ref as storageRef, uploadBytes, getDownloadURL } from "firebase/storage";
 import styles from '../Zalochat/Zalochat.module.css';
+import Accordion from 'react-bootstrap/Accordion';
 
 const socket = io("http://localhost:4000");
 
@@ -79,8 +80,6 @@ function Header_Conten({ groupName, memberCount, isAdmin, onEditGroup }) {
       {isAdmin && (
         <div className={styles.Header_Conten_Div_ChucNang}>
           <FaRegEdit onClick={onEditGroup} />
-          <CiVideoOn />
-          <IoMdSearch />
         </div>
       )}
     </div>
@@ -310,10 +309,8 @@ function FromTaoNhom({ show, onHide }) {
         messages: {},
       };
 
-      // Update groupChats
       await set(newGroupRef, groupData);
 
-      // Update userGroups for the creator and selected members
       const userGroupUpdates = {
         [`userGroups/${auth.currentUser.uid}/${groupId}`]: { role: "admin" },
         ...selectedUsers.reduce((acc, userId) => ({
@@ -652,107 +649,238 @@ function Slider_kien({ setSelectedGroupId }) {
   );
 }
 
-// Component thông tin nhóm
-function ThongTin({ groupId, isAdmin }) {
+// Component thông tin nhóm with new features
+function ThongTin({ groupId }) {
+  const [groupName, setGroupName] = useState("Default Group");
+  const [createdAt, setCreatedAt] = useState("");
+  const [groupAvatar, setGroupAvatar] = useState("https://cdn.pixabay.com/photo/2019/08/11/18/48/icon-4399681_1280.png");
   const [members, setMembers] = useState([]);
+  const [isAdmin, setIsAdmin] = useState(false);
   const [showAddMemberModal, setShowAddMemberModal] = useState(false);
-  const [searchMember, setSearchMember] = useState("");
-  const [selectedMember, setSelectedMember] = useState(null);
+  const [showMemberListModal, setShowMemberListModal] = useState(false); // New state for member list modal
+  const [search, setSearch] = useState("");
+  const [availableUsers, setAvailableUsers] = useState([]);
+  const [selectedUsers, setSelectedUsers] = useState([]);
 
   useEffect(() => {
     if (!groupId) return;
 
     const groupRef = ref(db, `groupChats/${groupId}`);
-    const unsubscribe = onValue(groupRef, (snapshot) => {
+    const unsubscribe = onValue(groupRef, async (snapshot) => {
       const data = snapshot.val();
-      if (data && data.members) {
-        const memberList = Object.entries(data.members).map(([userId, role]) => ({
-          id: userId,
-          role,
-          email: "Unknown", // Thay bằng cách lấy email thực tế từ users
-        }));
-        setMembers(memberList);
+      if (data) {
+        setGroupName(data.groupName || "Default Group");
+        setCreatedAt(data.createdAt ? new Date(data.createdAt).toLocaleDateString() : "");
+        setGroupAvatar(data.groupAvatar || "https://cdn.pixabay.com/photo/2019/08/11/18/48/icon-4399681_1280.png");
+        setIsAdmin(data.members && data.members[auth.currentUser?.uid] === "admin");
+
+        const memberIds = Object.keys(data.members || {});
+        const memberDetails = await Promise.all(
+          memberIds.map(async (memberId) => {
+            const userRef = ref(db, `users/${memberId}`);
+            const userSnapshot = await get(userRef);
+            return userSnapshot.exists() ? { id: memberId, email: userSnapshot.val().email, role: data.members[memberId] } : null;
+          })
+        );
+        setMembers(memberDetails.filter((member) => member !== null));
       }
     });
 
     return () => off(groupRef, "value", unsubscribe);
   }, [groupId]);
 
+  const toggleUserSelection = (id) => {
+    setSelectedUsers((prev) => (prev.includes(id) ? prev.filter((uid) => uid !== id) : [...prev, id]));
+  };
+
+  const Call_DanhSachBanBe = async (user_id) => {
+    if (!auth.currentUser) return [];
+    const link_banbe = ref(db, `users/${user_id}/listfriend`);
+    const snapshot = await get(link_banbe);
+    return snapshot.exists() ? snapshot.val() || [] : [];
+  };
+
+  const getUserEmails = async (friendIDs) => {
+    const friendDetails = await Promise.all(
+      friendIDs.map(async (friendID) => {
+        const userRef = ref(db, `users/${friendID}`);
+        const snapshot = await get(userRef);
+        return snapshot.exists() ? { id: friendID, email: snapshot.val().email } : null;
+      })
+    );
+    return friendDetails.filter((friend) => friend !== null);
+  };
+
+  useEffect(() => {
+    const fetchFriends = async () => {
+      if (auth.currentUser) {
+        const friendIDs = await Call_DanhSachBanBe(auth.currentUser.uid);
+        const friendDetails = await getUserEmails(friendIDs);
+        const nonMembers = friendDetails.filter(
+          (friend) => !members.some((member) => member.id === friend.id)
+        );
+        setAvailableUsers(nonMembers);
+      }
+    };
+    fetchFriends();
+  }, [members]);
+
+  const addMembers = async () => {
+    if (!isAdmin || selectedUsers.length === 0) return;
+
+    const updates = {};
+    selectedUsers.forEach((userId) => {
+      updates[`groupChats/${groupId}/members/${userId}`] = "member";
+      updates[`userGroups/${userId}/${groupId}`] = { role: "member" };
+    });
+
+    await update(ref(db), updates);
+    setShowAddMemberModal(false);
+    setSelectedUsers([]);
+    alert("Thêm thành viên thành công!");
+  };
+
   const kickMember = async (memberId) => {
-    if (isAdmin && memberId !== auth.currentUser?.uid) {
-      await update(ref(db, `groupChats/${groupId}/members`), { [memberId]: null });
-      await update(ref(db, `userGroups/${memberId}/${groupId}`), null);
-      alert("Đã kick thành viên!");
-    }
-  };
+    if (!isAdmin || memberId === auth.currentUser?.uid) return;
 
-  const addMember = async () => {
-    if (isAdmin && selectedMember) {
-      await update(ref(db, `groupChats/${groupId}/members`), { [selectedMember]: "member" });
-      const userGroupRef = ref(db, `userGroups/${selectedMember}/${groupId}`);
-      await set(userGroupRef, { role: "member" });
-      setShowAddMemberModal(false);
-      setSearchMember("");
-      setSelectedMember(null);
-      alert("Đã thêm thành viên!");
-    }
-  };
-
-  const searchUserByEmailForAdd = async (email) => {
-    const snapshot = await get(ref(db, "users"));
-    if (snapshot.exists()) {
-      snapshot.forEach((childSnapshot) => {
-        const userData = childSnapshot.val();
-        if (userData.email === email && !members.find((m) => m.id === childSnapshot.key)) {
-          setSelectedMember(childSnapshot.key);
-        }
-      });
-    }
+    await update(ref(db), {
+      [`groupChats/${groupId}/members/${memberId}`]: null,
+      [`userGroups/${memberId}/${groupId}`]: null,
+    });
+    alert("Đã kick thành viên!");
   };
 
   return (
-    <Col xs={2} className={`${styles.ThongTin} bg-danger p-3`}>
-      <h4>Thông Tin Nhóm</h4>
-      <ListGroup>
-        {members.map((member) => (
-          <ListGroup.Item key={member.id} className="d-flex justify-content-between align-items-center">
-            <span>{member.email} ({member.role})</span>
-            {isAdmin && member.id !== auth.currentUser?.uid && (
-              <Button variant="danger" size="sm" onClick={() => kickMember(member.id)}><FaTrash /></Button>
+    <div className="container mt-4">
+      <Card className="text-center p-4">
+        <Card.Img
+          variant="top"
+          src={groupAvatar}
+          className="rounded-circle mx-auto d-block"
+          style={{ width: "80px", height: "80px", objectFit: "cover" }}
+        />
+        <Card.Body>
+          <Card.Title className="fw-bold">{groupName}</Card.Title>
+          <Card.Subtitle className="mb-3 text-muted">
+            Ngày tạo: {createdAt}
+          </Card.Subtitle>
+          <div className="d-flex justify-content-around my-3">
+            <Button variant="light">
+              <FaBell />
+            </Button>
+            <Button variant="light">
+              <FaThumbtack />
+            </Button>
+            {isAdmin && (
+              <Button variant="light" onClick={() => setShowAddMemberModal(true)}>
+                <FaUserPlus />
+              </Button>
             )}
-          </ListGroup.Item>
-        ))}
-      </ListGroup>
-      {isAdmin && (
-        <>
-          <Button variant="success" onClick={() => setShowAddMemberModal(true)} className="mt-3">
-            <FaPlus /> Thêm Thành Viên
+            <Button variant="light">
+              <FaCog />
+            </Button>
+          </div>
+        </Card.Body>
+      </Card>
+
+      <Card className="mt-4 p-3">
+        <Card.Title>Thành viên</Card.Title>
+        <Card.Text>
+          <strong>{members.length} thành viên</strong>
+          <Button
+            variant="link"
+            className="ms-2"
+            onClick={() => setShowMemberListModal(true)}
+          >
+            (Xem danh sách)
           </Button>
-          <Modal show={showAddMemberModal} onHide={() => setShowAddMemberModal(false)}>
-            <Modal.Header closeButton>
-              <Modal.Title>Thêm Thành Viên</Modal.Title>
-            </Modal.Header>
-            <Modal.Body>
-              <Form.Group>
-                <Form.Control
-                  type="text"
-                  placeholder="Nhập email thành viên..."
-                  value={searchMember}
-                  onChange={(e) => {
-                    setSearchMember(e.target.value);
-                    searchUserByEmailForAdd(e.target.value);
-                  }}
-                />
-              </Form.Group>
-            </Modal.Body>
-            <Modal.Footer>
-              <Button variant="secondary" onClick={() => setShowAddMemberModal(false)}>Hủy</Button>
-              <Button variant="primary" onClick={addMember} disabled={!selectedMember}>Thêm</Button>
-            </Modal.Footer>
-          </Modal>
-        </>
-      )}
-    </Col>
+        </Card.Text>
+      </Card>
+
+      <Card className="mt-4 p-3">
+        <Card.Title>Bảng tin cộng đồng</Card.Title>
+        <Card.Text>Danh sách nhắc hẹn</Card.Text>
+        <Card.Text>Ghi chú, ghim, bình chọn</Card.Text>
+      </Card>
+
+      {/* Modal to add members */}
+      <Modal show={showAddMemberModal} onHide={() => setShowAddMemberModal(false)} centered>
+        <Modal.Header closeButton>
+          <Modal.Title>Thêm Thành Viên</Modal.Title>
+        </Modal.Header>
+        <Modal.Body className="p-4">
+          <Form.Group className="mb-3">
+            <Form.Label className="fw-bold">Tìm Kiếm Bạn Bè</Form.Label>
+            <InputGroup>
+              <InputGroup.Text><FaSearch /></InputGroup.Text>
+              <Form.Control
+                type="text"
+                placeholder="Tìm kiếm bạn bè..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="rounded-end"
+              />
+            </InputGroup>
+          </Form.Group>
+          <ListGroup style={{ maxHeight: "200px", overflowY: "auto", border: "1px solid #ddd", borderRadius: "5px" }}>
+            {availableUsers.length > 0 ? (
+              availableUsers
+                .filter((user) => user.email.toLowerCase().includes(search.toLowerCase()))
+                .map((user) => (
+                  <ListGroup.Item
+                    key={user.id}
+                    className="d-flex align-items-center p-3"
+                    style={{ borderBottom: "1px solid #eee", cursor: "pointer", backgroundColor: selectedUsers.includes(user.id) ? "#e9f7ff" : "white" }}
+                    onClick={() => toggleUserSelection(user.id)}
+                  >
+                    <Form.Check
+                      type="checkbox"
+                      checked={selectedUsers.includes(user.id)}
+                      onChange={() => toggleUserSelection(user.id)}
+                      className="me-3"
+                    />
+                    <span>{user.email}</span>
+                  </ListGroup.Item>
+                ))
+            ) : (
+              <ListGroup.Item className="text-center text-muted p-3">Không có bạn bè để thêm.</ListGroup.Item>
+            )}
+          </ListGroup>
+        </Modal.Body>
+        <Modal.Footer>
+          <Button variant="secondary" onClick={() => setShowAddMemberModal(false)}>Hủy</Button>
+          <Button variant="primary" disabled={selectedUsers.length === 0} onClick={addMembers}>Thêm</Button>
+        </Modal.Footer>
+      </Modal>
+
+      {/* New Modal to show member list */}
+      <Modal show={showMemberListModal} onHide={() => setShowMemberListModal(false)} centered>
+        <Modal.Header closeButton>
+          <Modal.Title>Danh Sách Thành Viên</Modal.Title>
+        </Modal.Header>
+        <Modal.Body className="p-4">
+          <ListGroup style={{ maxHeight: "300px", overflowY: "auto", border: "1px solid #ddd", borderRadius: "5px" }}>
+            {members.map((member) => (
+              <ListGroup.Item
+                key={member.id}
+                className="d-flex justify-content-between align-items-center p-3"
+                style={{ borderBottom: "1px solid #eee" }}
+              >
+                <span>{member.email}</span>
+                {isAdmin && member.id !== auth.currentUser?.uid && (
+                  <Button variant="danger" size="sm" onClick={() => kickMember(member.id)}>
+                    <FaTrash /> Kick
+                  </Button>
+                )}
+              </ListGroup.Item>
+            ))}
+          </ListGroup>
+        </Modal.Body>
+        <Modal.Footer>
+          <Button variant="secondary" onClick={() => setShowMemberListModal(false)}>Đóng</Button>
+        </Modal.Footer>
+      </Modal>
+    </div>
   );
 }
 
@@ -769,10 +897,12 @@ function Layout() {
         <Col xs={3} className="bg-primary">
           <Slider_kien setSelectedGroupId={setSelectedGroupId} />
         </Col>
-        <Col xs={7} className="bg-gray">
+        <Col xs={6} className="bg-gray">
           {selectedGroupId ? <Conten groupId={selectedGroupId} /> : <p>Chọn nhóm để bắt đầu trò chuyện</p>}
         </Col>
-        {selectedGroupId && <ThongTin groupId={selectedGroupId} />}
+        <Col xs={3} className="" style={{ borderLeft: "1px solid rgba(0, 0, 0, 0.347)" }}>
+          {selectedGroupId ? <ThongTin groupId={selectedGroupId} /> : <p>Chọn nhóm để xem thông tin</p>}
+        </Col>
       </Row>
     </Container>
   );
@@ -783,4 +913,4 @@ function Zalo_Main() {
   return <Layout />;
 }
 
-export default Zalo_Main;
+export default Zalo_Main; 
