@@ -1,9 +1,8 @@
 import Container from 'react-bootstrap/Container';
 import Row from 'react-bootstrap/Row';
 import Col from 'react-bootstrap/Col';
-import { FaSearch, FaUserPlus, FaUsers, FaRegEdit, FaBell, FaThumbtack, FaCog, FaTrash } from "react-icons/fa";
-import { CiUser, CiVideoOn } from "react-icons/ci";
-import { IoMdSearch } from "react-icons/io";
+import { FaSearch, FaUserPlus, FaUsers, FaRegEdit, FaBell, FaThumbtack, FaCog, FaTrash ,FaSignOutAlt} from "react-icons/fa";
+import { CiUser } from "react-icons/ci";
 import { BsEmojiSmile, BsPaperclip } from "react-icons/bs";
 import { MdSend } from "react-icons/md";
 import { useState, useEffect } from "react";
@@ -13,8 +12,7 @@ import { auth, db, storage } from '../ConnectFireBase/firebaseClient';
 import { update, ref, get, push, set, onValue, off, remove } from "firebase/database";
 import { ref as storageRef, uploadBytes, getDownloadURL } from "firebase/storage";
 import styles from '../Zalochat/Zalochat.module.css';
-import Accordion from 'react-bootstrap/Accordion';
-
+import { useNavigate } from 'react-router-dom'; // Import useNavigate
 const socket = io("http://localhost:4000");
 
 // Component hiển thị tin nhắn
@@ -182,13 +180,13 @@ function Gui_Conten({ groupId }) {
 }
 
 // Component chính của nội dung trò chuyện
-function Conten({ groupId }) {
+function Conten({ groupId, onGroupDeleted }) {
   const [groupName, setGroupName] = useState("Default Group");
   const [memberCount, setMemberCount] = useState(0);
   const [isAdmin, setIsAdmin] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [newGroupName, setNewGroupName] = useState("");
-  const [showDeleteModal, setShowDeleteModal] = useState(false); // Modal xác nhận xóa nhóm
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
 
   useEffect(() => {
     if (!groupId) return;
@@ -200,11 +198,13 @@ function Conten({ groupId }) {
         setGroupName(data.groupName || "Default Group");
         setMemberCount(Object.keys(data.members || {}).length);
         setIsAdmin(data.members && data.members[auth.currentUser?.uid] === "admin");
+      } else {
+        onGroupDeleted();
       }
     });
 
     return () => off(groupRef, "value", unsubscribe);
-  }, [groupId]);
+  }, [groupId, onGroupDeleted]);
 
   const handleEditGroup = () => setShowEditModal(true);
   const saveGroupName = async () => {
@@ -215,12 +215,12 @@ function Conten({ groupId }) {
     }
   };
 
-  const handleDeleteGroup = () => setShowDeleteModal(true); // Mở modal xác nhận xóa
+  const handleDeleteGroup = () => setShowDeleteModal(true);
   const confirmDeleteGroup = async () => {
     if (isAdmin) {
       // Xóa nhóm từ groupChats
       await remove(ref(db, `groupChats/${groupId}`));
-      
+
       // Xóa thông tin nhóm khỏi userGroups của tất cả thành viên
       const groupRef = ref(db, `groupChats/${groupId}`);
       const snapshot = await get(groupRef);
@@ -235,6 +235,7 @@ function Conten({ groupId }) {
 
       setShowDeleteModal(false);
       alert(`Nhóm ${groupName} đã được xóa thành công!`);
+      onGroupDeleted(); // Gọi callback để thông báo xóa
     }
   };
 
@@ -598,9 +599,21 @@ function From_KetBan({ show, onHide }) {
 }
 
 // Component tìm kiếm và chức năng
+// Component tìm kiếm và chức năng
 function TimKiem({ onCreateGroup, onAddFriend }) {
   const [showCreateGroup, setShowCreateGroup] = useState(false);
   const [showAddFriend, setShowAddFriend] = useState(false);
+  const navigate = useNavigate(); // Hook để chuyển hướng
+  const handleLogout = async () => {
+    try {
+      await auth.signOut(); // Đăng xuất khỏi Firebase Authentication
+      socket.disconnect(); // Ngắt kết nối socket
+      console.log("Đăng xuất thành công!");
+      navigate('/'); // Chuyển hướng về trang đăng nhập
+    } catch (error) {
+      console.error("Lỗi khi đăng xuất:", error);
+    }
+  };
 
   return (
     <div className={styles.TimKiem_Chucnang}>
@@ -611,6 +624,7 @@ function TimKiem({ onCreateGroup, onAddFriend }) {
       <div className={styles.IconWrapper}>
         <FaUserPlus onClick={() => setShowAddFriend(true)} />
         <FaUsers onClick={() => setShowCreateGroup(true)} />
+        <FaSignOutAlt onClick={handleLogout} className={styles.logoutIcon} /> {/* Icon logout */}
       </div>
       {showCreateGroup && <FromTaoNhom show={showCreateGroup} onHide={() => setShowCreateGroup(false)} />}
       {showAddFriend && <From_KetBan show={showAddFriend} onHide={() => setShowAddFriend(false)} />}
@@ -634,58 +648,73 @@ function The_User({ id, groupName, onSelect }) {
 }
 
 // Component danh sách nhóm
-function ListNguoiNhan({ onSelectGroup }) {
+function ListNguoiNhan({ onSelectGroup, refresh }) {
   const [nhom, setNhom] = useState([]);
+  const [groupListeners, setGroupListeners] = useState({}); // Lưu trữ các unsubscribe function cho từng group
 
   const Call_nhom = (user_id) => {
-    if (!user_id) return;
+    if (!user_id) return () => {};
 
     const userGroupsPath = ref(db, `userGroups/${user_id}`);
     const unsubscribeUserGroups = onValue(userGroupsPath, (snapshot) => {
       const userGroupsData = snapshot.val();
       if (userGroupsData) {
         const groupIDs = Object.keys(userGroupsData);
-        const groupDetails = [];
-        let completedQueries = 0;
+
+        // Cleanup các listener cũ trước khi tạo listener mới
+        Object.values(groupListeners).forEach((unsubscribe) => unsubscribe());
+        setGroupListeners({});
 
         if (groupIDs.length === 0) {
           setNhom([]);
           return;
         }
 
+        const groupDetails = [];
+        let completedQueries = 0;
+
+        const newGroupListeners = {};
         groupIDs.forEach((groupID) => {
           const groupPath = ref(db, `groupChats/${groupID}`);
           const unsubscribeGroup = onValue(groupPath, (groupSnapshot) => {
             const groupData = groupSnapshot.val();
             if (groupData && groupData.groupName) {
-              // Nếu nhóm tồn tại, thêm vào danh sách
-              groupDetails.push({ id: groupID, name: groupData.groupName });
+              // Kiểm tra xem nhóm đã tồn tại trong groupDetails chưa
+              if (!groupDetails.some((g) => g.id === groupID)) {
+                groupDetails.push({ id: groupID, name: groupData.groupName });
+              }
             }
             completedQueries++;
 
             if (completedQueries === groupIDs.length) {
-              setNhom(groupDetails);
+              // Sắp xếp và cập nhật danh sách nhóm
+              setNhom([...groupDetails]); // Đảm bảo không trùng lặp
             }
           });
 
-          // Cleanup listener for individual group
-          return () => off(groupPath, "value", unsubscribeGroup);
+          newGroupListeners[groupID] = unsubscribeGroup;
         });
+
+        setGroupListeners(newGroupListeners);
       } else {
         setNhom([]);
+        Object.values(groupListeners).forEach((unsubscribe) => unsubscribe());
+        setGroupListeners({});
       }
     });
 
-    // Cleanup listener for userGroups
-    return () => off(userGroupsPath, "value", unsubscribeUserGroups);
+    return () => {
+      off(userGroupsPath, "value", unsubscribeUserGroups);
+      Object.values(groupListeners).forEach((unsubscribe) => unsubscribe());
+    };
   };
 
   useEffect(() => {
     if (auth.currentUser) {
       const unsubscribe = Call_nhom(auth.currentUser.uid);
-      return () => unsubscribe && unsubscribe();
+      return unsubscribe;
     }
-  }, [auth.currentUser]);
+  }, [auth.currentUser, refresh]); // Kích hoạt lại khi refresh thay đổi
 
   return (
     <div className={styles.listContainer}>
@@ -697,14 +726,14 @@ function ListNguoiNhan({ onSelectGroup }) {
 }
 
 // Component sidebar
-function Slider_kien({ setSelectedGroupId }) {
+function Slider_kien({ setSelectedGroupId, refresh }) {
   return (
     <Row className={styles.TimKiem_Div}>
       <Col className={`${styles.small_col} ${styles.Timkiem} bg-white p-3`}>
         <TimKiem />
       </Col>
       <Col className={`${styles.flex_grow_1} bg-white p-0`}>
-        <ListNguoiNhan onSelectGroup={setSelectedGroupId} />
+        <ListNguoiNhan onSelectGroup={setSelectedGroupId} refresh={refresh} />
       </Col>
     </Row>
   );
@@ -948,18 +977,29 @@ function ThongTin({ groupId }) {
 // Component layout chính
 function Layout() {
   const [selectedGroupId, setSelectedGroupId] = useState(null);
+  const [refreshList, setRefreshList] = useState(false);
+
   useEffect(() => {
     if (selectedGroupId) socket.emit("join_room", selectedGroupId);
   }, [selectedGroupId]);
+
+  const handleGroupDeleted = () => {
+    setSelectedGroupId(null);
+    setRefreshList(prev => !prev);
+  };
 
   return (
     <Container fluid>
       <Row className={styles.Container_cc}>
         <Col xs={3} className="bg-primary">
-          <Slider_kien setSelectedGroupId={setSelectedGroupId} />
+          <Slider_kien setSelectedGroupId={setSelectedGroupId} refresh={refreshList} />
         </Col>
         <Col xs={6} className="bg-gray">
-          {selectedGroupId ? <Conten groupId={selectedGroupId} /> : <p>Chọn nhóm để bắt đầu trò chuyện</p>}
+          {selectedGroupId ? (
+            <Conten groupId={selectedGroupId} onGroupDeleted={handleGroupDeleted} />
+          ) : (
+            <p>Chọn nhóm để bắt đầu trò chuyện</p>
+          )}
         </Col>
         <Col xs={3} className="" style={{ borderLeft: "1px solid rgba(0, 0, 0, 0.347)" }}>
           {selectedGroupId ? <ThongTin groupId={selectedGroupId} /> : <p>Chọn nhóm để xem thông tin</p>}
