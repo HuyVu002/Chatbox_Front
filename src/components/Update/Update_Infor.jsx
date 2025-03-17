@@ -12,7 +12,7 @@ function Update_Info() {
 
   // States for user info
   const [email, setEmail] = useState("");
-  const [avatar, setAvatar] = useState("https://hoanghamobile.com/tin-tuc/wp-content/uploads/2024/09/hinh-anh-dong-52.jpg");
+  const [avatar, setAvatar] = useState("https://t3.ftcdn.net/jpg/05/47/85/88/360_F_547858830_cnWFvIG7SYsC2GLRDoojuZToysoUna4Y.jpg");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState(""); // New state for confirming password
   const [currentPassword, setCurrentPassword] = useState("");

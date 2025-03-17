@@ -14,7 +14,7 @@ import { update, ref, get, push, set, onValue, off, remove } from "firebase/data
 import { ref as storageRef, uploadBytes, getDownloadURL } from "firebase/storage";
 import styles from '../Zalochat/Zalochat.module.css';
 import { useNavigate } from 'react-router-dom';
-
+import { IoIosSettings } from "react-icons/io";
 const socket = io("http://localhost:4000");
 
 // Component hiển thị tin nhắn
@@ -30,7 +30,7 @@ function TinNhan({ id_user, content, time, imageUrl }) {
         if (snapshot.exists()) {
           const userData = snapshot.val();
           setUserName(userData.email || "Unknown");
-          setUserAvatar(userData.avatar || "https://t3.ftcdn.net/jpg/05/47/85/88/360_F_547858830_cnWFvIG7SYsC2GLRDoojuZToysoUna4Y.jpg");
+          setUserAvatar(userData.photoURL|| "https://t3.ftcdn.net/jpg/05/47/85/88/360_F_547858830_cnWFvIG7SYsC2GLRDoojuZToysoUna4Y.jpg");
         }
       }
     };
@@ -631,6 +631,14 @@ function TimKiem({ onCreateGroup, onAddFriend }) {
       console.error("Lỗi khi đăng xuất:", error);
     }
   };
+  const ThayDoiThongTin = async () => {
+    try {
+    
+      navigate('/update_infor'); // Chuyển hướng về trang đăng nhập
+    } catch (error) {
+   
+    }
+  };
 
   return (
     <div className={styles.TimKiem_Chucnang}>
@@ -645,6 +653,7 @@ function TimKiem({ onCreateGroup, onAddFriend }) {
       </div>
       {showCreateGroup && <FromTaoNhom show={showCreateGroup} onHide={() => setShowCreateGroup(false)} />}
       {showAddFriend && <From_KetBan show={showAddFriend} onHide={() => setShowAddFriend(false)} />}
+      <IoIosSettings  onClick={() => ThayDoiThongTin()} />  
     </div>
   );
 }
