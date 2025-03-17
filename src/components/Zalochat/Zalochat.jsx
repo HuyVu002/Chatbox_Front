@@ -10,7 +10,7 @@ import { useState, useEffect } from "react";
 import { Form, Button, Card, Image, ListGroup, Modal, InputGroup } from "react-bootstrap";
 import io from "socket.io-client";
 import { auth, db, storage } from '../ConnectFireBase/firebaseClient';
-import { update, ref, get, push, set, onValue, off } from "firebase/database";
+import { update, ref, get, push, set, onValue, off, remove } from "firebase/database";
 import { ref as storageRef, uploadBytes, getDownloadURL } from "firebase/storage";
 import styles from '../Zalochat/Zalochat.module.css';
 import Accordion from 'react-bootstrap/Accordion';
@@ -59,7 +59,7 @@ function TinNhan({ id_user, content, time, imageUrl }) {
 }
 
 // Component header của nội dung trò chuyện
-function Header_Conten({ groupName, memberCount, isAdmin, onEditGroup }) {
+function Header_Conten({ groupName, memberCount, isAdmin, onEditGroup, onDeleteGroup }) {
   return (
     <div className={styles.Header_Conten_Div}>
       <div className={styles.Header_Conten_ThongTin}>
@@ -80,6 +80,7 @@ function Header_Conten({ groupName, memberCount, isAdmin, onEditGroup }) {
       {isAdmin && (
         <div className={styles.Header_Conten_Div_ChucNang}>
           <FaRegEdit onClick={onEditGroup} />
+          <FaTrash onClick={onDeleteGroup} />
         </div>
       )}
     </div>
@@ -187,6 +188,7 @@ function Conten({ groupId }) {
   const [isAdmin, setIsAdmin] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [newGroupName, setNewGroupName] = useState("");
+  const [showDeleteModal, setShowDeleteModal] = useState(false); // Modal xác nhận xóa nhóm
 
   useEffect(() => {
     if (!groupId) return;
@@ -213,10 +215,39 @@ function Conten({ groupId }) {
     }
   };
 
+  const handleDeleteGroup = () => setShowDeleteModal(true); // Mở modal xác nhận xóa
+  const confirmDeleteGroup = async () => {
+    if (isAdmin) {
+      // Xóa nhóm từ groupChats
+      await remove(ref(db, `groupChats/${groupId}`));
+      
+      // Xóa thông tin nhóm khỏi userGroups của tất cả thành viên
+      const groupRef = ref(db, `groupChats/${groupId}`);
+      const snapshot = await get(groupRef);
+      if (snapshot.exists()) {
+        const members = snapshot.val().members || {};
+        const updates = {};
+        Object.keys(members).forEach((memberId) => {
+          updates[`userGroups/${memberId}/${groupId}`] = null;
+        });
+        await update(ref(db), updates);
+      }
+
+      setShowDeleteModal(false);
+      alert(`Nhóm ${groupName} đã được xóa thành công!`);
+    }
+  };
+
   return (
     <Row className={styles.ConTen_Div}>
       <Col className={`${styles.ConTen_Head} bg-white p-0`}>
-        <Header_Conten groupName={groupName} memberCount={memberCount} isAdmin={isAdmin} onEditGroup={handleEditGroup} />
+        <Header_Conten 
+          groupName={groupName} 
+          memberCount={memberCount} 
+          isAdmin={isAdmin} 
+          onEditGroup={handleEditGroup} 
+          onDeleteGroup={handleDeleteGroup} 
+        />
       </Col>
       <Col className={`${styles.ConTen_chat} p-0`}>
         <Chat_Conten groupId={groupId} />
@@ -241,6 +272,18 @@ function Conten({ groupId }) {
         <Modal.Footer>
           <Button variant="secondary" onClick={() => setShowEditModal(false)}>Hủy</Button>
           <Button variant="primary" onClick={saveGroupName}>Lưu</Button>
+        </Modal.Footer>
+      </Modal>
+      <Modal show={showDeleteModal} onHide={() => setShowDeleteModal(false)}>
+        <Modal.Header closeButton>
+          <Modal.Title>Xác nhận xóa nhóm</Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          <p>Bạn có chắc chắn muốn xóa nhóm <strong>{groupName}</strong>? Hành động này không thể hoàn tác!</p>
+        </Modal.Body>
+        <Modal.Footer>
+          <Button variant="secondary" onClick={() => setShowDeleteModal(false)}>Hủy</Button>
+          <Button variant="danger" onClick={confirmDeleteGroup}>Xóa</Button>
         </Modal.Footer>
       </Modal>
     </Row>
@@ -595,36 +638,54 @@ function ListNguoiNhan({ onSelectGroup }) {
   const [nhom, setNhom] = useState([]);
 
   const Call_nhom = (user_id) => {
+    if (!user_id) return;
+
     const userGroupsPath = ref(db, `userGroups/${user_id}`);
-    onValue(userGroupsPath, (snapshot) => {
+    const unsubscribeUserGroups = onValue(userGroupsPath, (snapshot) => {
       const userGroupsData = snapshot.val();
       if (userGroupsData) {
         const groupIDs = Object.keys(userGroupsData);
         const groupDetails = [];
         let completedQueries = 0;
 
+        if (groupIDs.length === 0) {
+          setNhom([]);
+          return;
+        }
+
         groupIDs.forEach((groupID) => {
           const groupPath = ref(db, `groupChats/${groupID}`);
-          onValue(groupPath, (groupSnapshot) => {
+          const unsubscribeGroup = onValue(groupPath, (groupSnapshot) => {
             const groupData = groupSnapshot.val();
             if (groupData && groupData.groupName) {
+              // Nếu nhóm tồn tại, thêm vào danh sách
               groupDetails.push({ id: groupID, name: groupData.groupName });
             }
             completedQueries++;
+
             if (completedQueries === groupIDs.length) {
               setNhom(groupDetails);
             }
-          }, { onlyOnce: true });
+          });
+
+          // Cleanup listener for individual group
+          return () => off(groupPath, "value", unsubscribeGroup);
         });
       } else {
         setNhom([]);
       }
     });
+
+    // Cleanup listener for userGroups
+    return () => off(userGroupsPath, "value", unsubscribeUserGroups);
   };
 
   useEffect(() => {
-    if (auth.currentUser) Call_nhom(auth.currentUser.uid);
-  }, []);
+    if (auth.currentUser) {
+      const unsubscribe = Call_nhom(auth.currentUser.uid);
+      return () => unsubscribe && unsubscribe();
+    }
+  }, [auth.currentUser]);
 
   return (
     <div className={styles.listContainer}>
@@ -657,7 +718,7 @@ function ThongTin({ groupId }) {
   const [members, setMembers] = useState([]);
   const [isAdmin, setIsAdmin] = useState(false);
   const [showAddMemberModal, setShowAddMemberModal] = useState(false);
-  const [showMemberListModal, setShowMemberListModal] = useState(false); // New state for member list modal
+  const [showMemberListModal, setShowMemberListModal] = useState(false);
   const [search, setSearch] = useState("");
   const [availableUsers, setAvailableUsers] = useState([]);
   const [selectedUsers, setSelectedUsers] = useState([]);
@@ -853,7 +914,7 @@ function ThongTin({ groupId }) {
         </Modal.Footer>
       </Modal>
 
-      {/* New Modal to show member list */}
+      {/* Modal to show member list */}
       <Modal show={showMemberListModal} onHide={() => setShowMemberListModal(false)} centered>
         <Modal.Header closeButton>
           <Modal.Title>Danh Sách Thành Viên</Modal.Title>
@@ -913,4 +974,4 @@ function Zalo_Main() {
   return <Layout />;
 }
 
-export default Zalo_Main; 
+export default Zalo_Main;
