@@ -6,6 +6,7 @@ import ChatApp from "./components/ChatApp";
 import { onAuthStateChanged } from "firebase/auth";
 import Zalo_Main from "./components/Zalochat/Zalochat";
 import Update_Infor from "./components/Update/Update_Infor";
+import ForgotPassword from "./components/Login_Logout/ForgotPassword";
 
 
 function App() {
@@ -23,6 +24,7 @@ function App() {
       <Routes>
         {/* Mặc định vào sẽ là trang đăng nhập/đăng ký */}
         <Route path="/" element={<Auth />} />
+        <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route path="/chat_main" element={<Zalo_Main />} />
         {/* Nếu đăng nhập rồi thì vào chat, nếu chưa thì về đăng nhập */}
         <Route path="/chat" element={user ? <ChatApp /> : <Navigate to="/" />} />

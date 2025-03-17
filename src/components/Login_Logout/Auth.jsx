@@ -2,7 +2,6 @@ import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import "bootstrap/dist/css/bootstrap.min.css";
 import { get, child } from "firebase/database";
-
 import {
   getAuth,
   createUserWithEmailAndPassword,
@@ -25,72 +24,66 @@ function Auth() {
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
 
-
   const handleAuth = async (e) => {
     e.preventDefault();
     setLoading(true);
     setError("");
     setMessage("");
-  
+
     if (!isLogin && password !== confirmPassword) {
       setError("Mật khẩu nhập lại không khớp!");
       setLoading(false);
       return;
     }
-  
+
     try {
       if (isLogin) {
-        // Kiểm tra email có tồn tại trong Firebase Database không
         const usersRef = ref(db, "users");
         const snapshot = await get(usersRef);
-  
+
         if (!snapshot.exists()) {
           setError("Email chưa được đăng ký.");
           setLoading(false);
           return;
         }
-  
+
         const usersData = snapshot.val();
         const userEntry = Object.values(usersData).find((user) => user.email === email);
-  
+
         if (!userEntry) {
           setError("Email chưa được đăng ký.");
           setLoading(false);
           return;
         }
-  
-        // Tiến hành đăng nhập với Firebase Auth
+
         const userCredential = await signInWithEmailAndPassword(auth, email, password);
-        
+
         if (!userCredential.user.emailVerified) {
           setError("Bạn cần xác thực email trước khi đăng nhập.");
           setLoading(false);
           return;
         }
-  
+
         navigate("/chat_main");
-  
+
       } else {
-        // Kiểm tra xem email đã tồn tại chưa trước khi đăng ký
         const usersRef = ref(db, "users");
         const snapshot = await get(usersRef);
-  
+
         if (snapshot.exists()) {
           const usersData = snapshot.val();
           const emailExists = Object.values(usersData).some((user) => user.email === email);
-  
+
           if (emailExists) {
             setError("Email đã được sử dụng. Vui lòng chọn email khác.");
             setLoading(false);
             return;
           }
         }
-  
-        // Tạo tài khoản nếu chưa tồn tại
+
         const userCredential = await createUserWithEmailAndPassword(auth, email, password);
         await sendEmailVerification(userCredential.user);
-  
-        // Lưu thông tin user vào Firebase Realtime Database
+
         await set(ref(db, `users/${userCredential.user.uid}`), {
           email: email,
           displayName: nickname,
@@ -98,25 +91,17 @@ function Auth() {
           listfriend: "null",
           add_friend: "null"
         });
-  
+
         setMessage("🎉 Vui lòng kiểm tra email để xác thực tài khoản.");
         setIsLogin(true);
       }
-    }catch (err) {
-      console.log("Firebase Error:", err.code, err.message); 
-    
-      if (err.code === "auth/user-not-found") {
-        setError("Email chưa được đăng ký.");
-      }else if (err.code === "auth/invalid-credential") {
-        setError("Tài khoản hoặc mật khẩu không đúng.");
-      } else {
-        setError("Đăng nhập thất bại. Vui lòng thử lại.");
-      }
+    } catch (err) {
+      console.log("Firebase Error:", err.code, err.message);
+      setError("Đăng nhập thất bại. Vui lòng thử lại.");
     } finally {
       setLoading(false);
     }
   };
-  
 
   return (
     <div className="auth-container d-flex justify-content-center bg-primary-subtle align-items-center vh-100">
@@ -125,6 +110,7 @@ function Auth() {
         <p className="text-muted">{isLogin ? "Đăng nhập" : "Đăng ký"} tài khoản Zalo</p>
         {message && <p className="text-success">{message}</p>}
         {error && <p className="text-danger">{error}</p>}
+
         <form onSubmit={handleAuth}>
           <div className="mb-3">
             <input
@@ -174,6 +160,7 @@ function Auth() {
             {loading ? "Đang xử lý..." : isLogin ? "Đăng nhập" : "Đăng ký"}
           </button>
         </form>
+
         <p className="mt-3">
           {isLogin ? "Chưa có tài khoản? " : "Đã có tài khoản? "}
           <span
@@ -188,6 +175,17 @@ function Auth() {
             {isLogin ? "Đăng ký ngay" : "Đăng nhập"}
           </span>
         </p>
+        {isLogin && (
+          <p className="mt-2">
+            <span
+              className="text-primary cursor-pointer"
+              style={{ cursor: "pointer" }}
+              onClick={() => navigate("/forgot-password")}
+            >
+              Quên mật khẩu?
+            </span>
+          </p>
+        )}
       </div>
     </div>
   );
