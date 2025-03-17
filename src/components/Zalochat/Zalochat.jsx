@@ -59,6 +59,7 @@ function TinNhan({ id_user, content, time, imageUrl }) {
 }
 
 // Component header của nội dung trò chuyện
+// Component header của nội dung trò chuyện
 function Header_Conten({ groupName, memberCount, isAdmin, onEditGroup, onDeleteGroup, toggleThongTin }) {
   return (
     <div className={styles.Header_Conten_Div}>
@@ -77,13 +78,15 @@ function Header_Conten({ groupName, memberCount, isAdmin, onEditGroup, onDeleteG
           </div>
         </div>
       </div>
-      {isAdmin && (
-        <div className={styles.Header_Conten_Div_ChucNang}>
-          <FaRegEdit onClick={onEditGroup} />
-          <FaTrash onClick={onDeleteGroup} />
-          <VscLayoutSidebarRightOff onClick={toggleThongTin} /> {/* Thêm nút icon ẩn/hiện */}
-        </div>
-      )}
+      <div className={styles.Header_Conten_Div_ChucNang}>
+        {isAdmin && (
+          <>
+            <FaRegEdit onClick={onEditGroup} />
+            <FaTrash onClick={onDeleteGroup} />
+          </>
+        )}
+        <VscLayoutSidebarRightOff onClick={toggleThongTin} /> {/* Bỏ điều kiện isAdmin */}
+      </div>
     </div>
   );
 }
@@ -261,7 +264,7 @@ function Conten({ groupId, onGroupDeleted, toggleThongTin }) {
           isAdmin={isAdmin} 
           onEditGroup={handleEditGroup} 
           onDeleteGroup={handleDeleteGroup}
-          toggleThongTin={toggleThongTin}
+          toggleThongTin={toggleThongTin} // Truyền toggleThongTin
         />
       </Col>
       <Col className={`${styles.ConTen_chat} p-0`} style={{ width: '100%' }}>
