@@ -1,29 +1,13 @@
-
-
 import Container from 'react-bootstrap/Container';
 import Row from 'react-bootstrap/Row';
 import Col from 'react-bootstrap/Col';
-import Navbar from 'react-bootstrap/Navbar';
-// import Form from 'react-bootstrap/Form';
-// import Button from 'react-bootstrap/Button';
-import InputGroup from 'react-bootstrap/InputGroup';
-
-import styles from '../Zalochat/Zalochat.module.css'; 
-import { FaSearch, FaUserPlus, FaUsers,FaRegEdit } from "react-icons/fa";
-import { CiUser,CiVideoOn    } from "react-icons/ci";
+import { FaSearch, FaUserPlus, FaUsers, FaRegEdit, FaTrash, FaPlus } from "react-icons/fa";
+import { CiUser, CiVideoOn } from "react-icons/ci";
 import { IoMdSearch } from "react-icons/io";
 import { BsEmojiSmile, BsPaperclip } from "react-icons/bs";
 import { MdSend } from "react-icons/md";
-
 import { useState, useEffect } from "react";
-
-import { Form, Button, Card, Image, ListGroup } from "react-bootstrap";
-
-// import Card from 'react-bootstrap/Card';
-
-import Input from 'react-bootstrap/InputGroup';
-
-///
+import { Form, Button, Card, Image, ListGroup, Modal, InputGroup } from "react-bootstrap";
 import io from "socket.io-client";
 import { auth, db, storage } from '../ConnectFireBase/firebaseClient';
 import { update, ref, get, push, set, onValue, off } from "firebase/database";
@@ -32,63 +16,75 @@ import styles from '../Zalochat/Zalochat.module.css';
 
 const socket = io("http://localhost:4000");
 
-// import { auth, db, storage } from '../firebaseClient';
-import { auth, db, storage} from '../ConnectFireBase/firebaseClient'
+// Component hiển thị tin nhắn
+function TinNhan({ id_user, content, time, imageUrl }) {
+  const [userName, setUserName] = useState("Unknown");
+  const [userAvatar, setUserAvatar] = useState("https://t3.ftcdn.net/jpg/05/47/85/88/360_F_547858830_cnWFvIG7SYsC2GLRDoojuZToysoUna4Y.jpg");
 
+  useEffect(() => {
+    const fetchUserInfo = async () => {
+      if (id_user) {
+        const userRef = ref(db, `users/${id_user}`);
+        const snapshot = await get(userRef);
+        if (snapshot.exists()) {
+          const userData = snapshot.val();
+          setUserName(userData.email || "Unknown");
+          setUserAvatar(userData.avatar || "https://t3.ftcdn.net/jpg/05/47/85/88/360_F_547858830_cnWFvIG7SYsC2GLRDoojuZToysoUna4Y.jpg");
+        }
+      }
+    };
+    fetchUserInfo();
+  }, [id_user]);
 
-///ChucNang
+  const isMyMessage = id_user === auth.currentUser?.uid;
 
-import { update, ref, get } from "firebase/database";
-// import { getAuth, getUser } from "firebase/auth";
-
-
-
-
-function TinNhan({id_user,Conten,time}){
-    return (
-    <div className={`${styles.TinNhan_Conten} ${styles.huongGui}`} >
-        <div className={`${styles.TinNhan_User} `} >
-            <div className={styles.TinNhan_Conten_HinhANh}>
-                <img src="https://encrypted-tbn1.gstatic.com/images?q=tbn:ANd9GcTnCKdebIqk_dMxTPXae5wqG-4zodt5V4nz12FS7_jWWZwtU4X0lKIj_rVUX-h609l6xu96mNxd7RjX8Y56QQr1BTBnEGfvO358pvU0e_w" alt="Avatar"  />
-            </div>
-            <div className={`${styles.TinNhan_Conten_Conten} ${styles.minhGui} `} >
-                <div className={styles.TinNhan_Conten_Conten_Ten} >Trinh Duy Kiên</div>
-                <div className={styles.TinNhan_Conten_Conten_Tin} >sadsadcasaxasdsaddsadasdsadasdddddddddddddddddddddddddddddddddsaddddddddddddddddsadddddddddddddddddddddddddddddsadcassadasasdsa</div>
-                <div className={styles.TinNhan_Conten_Conten_Gio}>15:30</div>
-            </div>
+  return (
+    <div className={`${styles.TinNhan_Conten} ${isMyMessage ? styles.minhGui : styles.nguoiKhac} ${isMyMessage ? styles.myMessage : ''}`}>
+      <div className={styles.TinNhan_User}>
+        <div className={styles.TinNhan_Conten_HinhANh}>
+          <img src={userAvatar} alt="Avatar" />
+        </div>
+        <div className={styles.TinNhan_Conten_Conten}>
+          <div className={styles.TinNhan_Conten_Conten_Ten}>{userName}</div>
+          <div className={styles.TinNhan_Conten_Conten_Tin}>
+            {content}
+            {imageUrl && <img src={imageUrl} alt="Attached" style={{ maxWidth: "200px", marginTop: "10px" }} />}
+          </div>
+          <div className={styles.TinNhan_Conten_Conten_Gio}>{time}</div>
         </div>
       </div>
     </div>
   );
 }
 
-
-function Header_Conten(){
-    return(<>
-        <div className={styles.Header_Conten_Div} >
-            <div className={styles.Header_Conten_ThongTin} >
-                <div className={styles.Header_Conten_HinhANh}>
-                    <img src="https://encrypted-tbn1.gstatic.com/images?q=tbn:ANd9GcTnCKdebIqk_dMxTPXae5wqG-4zodt5V4nz12FS7_jWWZwtU4X0lKIj_rVUX-h609l6xu96mNxd7RjX8Y56QQr1BTBnEGfvO358pvU0e_w" alt="Avatar" className={styles.avatar} />
-                </div>
-                <div className={styles.Header_Conten_ThongTin_Ten} >
-                    <div className={styles.Header_Conten_ThongTin_Ten_De} >
-                         <p>Nhóm Sẽ Gầy</p>
-                    </div>
-              
-                    <div className={styles.Header_Conten_ThongTin_ChuThich}>
-                        <p>Cộng đồng</p> 
-                         <CiUser /><p> 99 thành viên</p>
-                    </div>
-                   
-                </div>
-            </div>
-            <div className={styles.Header_Conten_Div_ChucNang}>
-                <FaUserPlus />
-                <CiVideoOn />
-                <IoMdSearch />
-            </div>
+// Component header của nội dung trò chuyện
+function Header_Conten({ groupName, memberCount, isAdmin, onEditGroup }) {
+  return (
+    <div className={styles.Header_Conten_Div}>
+      <div className={styles.Header_Conten_ThongTin}>
+        <div className={styles.Header_Conten_HinhANh}>
+          <img src="https://cdn.pixabay.com/photo/2019/08/11/18/48/icon-4399681_1280.png" alt="Avatar" className={styles.avatar} />
         </div>
-    </>)
+        <div className={styles.Header_Conten_ThongTin_Ten}>
+          <div className={styles.Header_Conten_ThongTin_Ten_De}>
+            <p>{groupName}</p>
+          </div>
+          <div className={styles.Header_Conten_ThongTin_ChuThich}>
+            <p>Cộng đồng</p>
+            <CiUser />
+            <p>{memberCount} thành viên</p>
+          </div>
+        </div>
+      </div>
+      {isAdmin && (
+        <div className={styles.Header_Conten_Div_ChucNang}>
+          <FaRegEdit onClick={onEditGroup} />
+          <CiVideoOn />
+          <IoMdSearch />
+        </div>
+      )}
+    </div>
+  );
 }
 
 // Component hiển thị danh sách tin nhắn
@@ -314,7 +310,19 @@ function FromTaoNhom({ show, onHide }) {
         messages: {},
       };
 
+      // Update groupChats
       await set(newGroupRef, groupData);
+
+      // Update userGroups for the creator and selected members
+      const userGroupUpdates = {
+        [`userGroups/${auth.currentUser.uid}/${groupId}`]: { role: "admin" },
+        ...selectedUsers.reduce((acc, userId) => ({
+          ...acc,
+          [`userGroups/${userId}/${groupId}`]: { role: "member" },
+        }), {}),
+      };
+      await update(ref(db), userGroupUpdates);
+
       alert(`Nhóm ${groupName} đã được tạo thành công!`);
       onHide();
       setGroupName("");
@@ -390,156 +398,185 @@ function FromTaoNhom({ show, onHide }) {
   );
 }
 
-function From_KetBan(){
+// Component form kết bạn
+function From_KetBan({ show, onHide }) {
+  const [users, setUsers] = useState({});
+  const [search, setSearch] = useState("");
+  const [friendRequests, setFriendRequests] = useState([]);
 
-    const [users,setusers] = useState([]);
-    const [List_users,setList_users] = useState({});
-    const [search, setSearch] = useState("");
-    const [selectedUsers, setSelectedUsers] = useState([]);
+  const getFriendRequests = async (userId) => {
+    const userRef = ref(db, `users/${userId}/add_friend`);
+    const snapshot = await get(userRef);
+    if (snapshot.exists()) {
+      const friendList = snapshot.val() || [];
+      const friendDetails = await Promise.all(
+        friendList.map(async (friendID) => {
+          const friendRef = ref(db, `users/${friendID}`);
+          const friendSnapshot = await get(friendRef);
+          return friendSnapshot.exists() ? { id: friendID, email: friendSnapshot.val().email } : null;
+        })
+      );
+      return friendDetails.filter((friend) => friend !== null);
+    }
+    return [];
+  };
 
-    ///CallNguoiGuiLoiMoi
-
-
-    const [add_friend,set_add_friend] = useState([]);
-
-    
-
-    
-    const toggleUserSelection = (id) => {
-    setSelectedUsers((prev) =>
-        prev.includes(id) ? prev.filter((uid) => uid !== id) : [...prev, id]
-    );
+  useEffect(() => {
+    const fetchFriendRequests = async () => {
+      if (auth.currentUser) {
+        const requests = await getFriendRequests(auth.currentUser.uid);
+        setFriendRequests(requests);
+      }
     };
+    fetchFriendRequests();
+  }, []);
 
-    
-    const GuiLoimoi = async (user_id) => {
-        if (!auth.currentUser) {
-            console.log("Người dùng chưa đăng nhập!");
-            return;
+  const sendFriendRequest = async (userId) => {
+    if (!auth.currentUser) return;
+
+    const currentUserID = auth.currentUser.uid;
+    const userRef = ref(db, `users/${userId}/add_friend`);
+    const snapshot = await get(userRef);
+    let currentFriends = snapshot.exists() ? snapshot.val() : [];
+
+    if (!Array.isArray(currentFriends)) currentFriends = [];
+    if (!currentFriends.includes(currentUserID)) {
+      currentFriends.push(currentUserID);
+      await update(ref(db, `users/${userId}`), { add_friend: currentFriends });
+      alert("Đã gửi lời mời kết bạn!");
+    } else {
+      alert("Bạn đã gửi lời mời kết bạn trước đó!");
+    }
+  };
+
+  const acceptFriendRequest = async (userId) => {
+    if (!auth.currentUser) return;
+
+    const currentUserID = auth.currentUser.uid;
+    const link_add_friend = ref(db, `users/${currentUserID}/add_friend`);
+    const link_list_Friend = ref(db, `users/${currentUserID}/listfriend`);
+    const friend_list_Friend = ref(db, `users/${userId}/listfriend`);
+
+    const addFriendSnapshot = await get(link_add_friend);
+    let addFriendList = addFriendSnapshot.exists() ? addFriendSnapshot.val() : [];
+    if (!Array.isArray(addFriendList)) addFriendList = [];
+    if (addFriendList.includes(userId)) {
+      const updatedAddFriendList = addFriendList.filter((id) => id !== userId);
+      await update(ref(db, `users/${currentUserID}`), { add_friend: updatedAddFriendList });
+    }
+
+    const listFriendSnapshot = await get(link_list_Friend);
+    let listFriend = listFriendSnapshot.exists() ? listFriendSnapshot.val() : [];
+    if (!Array.isArray(listFriend)) listFriend = [];
+    if (!listFriend.includes(userId)) {
+      listFriend.push(userId);
+      await update(ref(db, `users/${currentUserID}`), { listfriend: listFriend });
+    }
+
+    const friendListSnapshot = await get(friend_list_Friend);
+    let friendList = friendListSnapshot.exists() ? friendListSnapshot.val() : [];
+    if (!Array.isArray(friendList)) friendList = [];
+    if (!friendList.includes(currentUserID)) {
+      friendList.push(currentUserID);
+      await update(ref(db, `users/${userId}`), { listfriend: friendList });
+    }
+
+    alert("Đã xác nhận kết bạn thành công!");
+    setFriendRequests(friendRequests.filter((friend) => friend.id !== userId));
+  };
+
+  const searchUserByEmail = async (email) => {
+    const snapshot = await get(ref(db, "users"));
+    if (snapshot.exists()) {
+      snapshot.forEach((childSnapshot) => {
+        const userData = childSnapshot.val();
+        if (userData.email === email && childSnapshot.key !== auth.currentUser?.uid) {
+          setUsers({ id: childSnapshot.key, email: userData.email });
         }
-    
-        const currentUserID = auth.currentUser.uid; // ID của người đang gửi lời mời kết bạn
-        const userRef = ref(db, `users/${user_id}/add_friend`); // Đường dẫn đến danh sách add_friend của user_id
-    
-        try {
-            const snapshot = await get(userRef);
-            let currentFriends = snapshot.exists() ? snapshot.val() : [];
-    
-            if (!Array.isArray(currentFriends)) {
-                currentFriends = [];
-            }
-    
-            if (!currentFriends.includes(currentUserID)) {
-                currentFriends.push(currentUserID); // Thêm ID của mình vào danh sách add_friend
-                await update(ref(db, `users/${user_id}`), { add_friend: currentFriends }); // Cập nhật dữ liệu vào Firebase
-                alert("Bạn đã gửi lời mời thành công")
-                console.log("Đã gửi lời mời kết bạn!");
-            } else {
-                alert("Bạn đã gửi lời mời kết bạn trước đó")
-                console.log("Bạn đã gửi lời mời kết bạn trước đó!");
-            }
-        } catch (error) {
-            console.error("Lỗi khi gửi lời mời kết bạn:", error);
-        }
-    };
+      });
+    }
+  };
 
-    
-    // console.log(List_users.map(user => user.id));
-  
+  useEffect(() => {
+    if (search) searchUserByEmail(search);
+  }, [search]);
 
-    const Call_Gmail = async (input) => {
-        // const db = getDatabase();
-        const snapshot = await get(ref(db, "users"));
+  return (
+    <Modal show={show} onHide={onHide} centered>
+      <Modal.Header closeButton>
+        <Modal.Title>Kết Bạn</Modal.Title>
+      </Modal.Header>
+      <Modal.Body className="p-4">
+        <Form.Group className="mb-4">
+          <Form.Label className="fw-bold">Tìm Kiếm Người Dùng</Form.Label>
+          <InputGroup>
+            <InputGroup.Text><FaSearch /></InputGroup.Text>
+            <Form.Control
+              type="text"
+              placeholder="Nhập email..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="rounded-end"
+            />
+          </InputGroup>
+        </Form.Group>
 
-        if (snapshot.exists()) {
-          let foundUser = null;
-          setList_users({});
-          snapshot.forEach((childSnapshot) => {
-            const userData = childSnapshot.val();
-            if (userData.email === input) {
-              foundUser = { id: childSnapshot.key, ...userData };
-             
-      
-            }
-          });
-      
-          if (foundUser) {
-            console.log("Gmail found:", foundUser);
-            setList_users(foundUser)
-     
-          } else {
-            console.log("Gmail not found");
-          }
-        } else {
-          console.log("No users found in database");
-        }
-      };
+        {Object.keys(users).length > 0 && users.id !== auth.currentUser?.uid && (
+          <Card className="mb-4 shadow-sm">
+            <Card.Body className="d-flex justify-content-between align-items-center">
+              <span>{users.email}</span>
+              <Button variant="info" onClick={() => sendFriendRequest(users.id)}>
+                <FaUserPlus /> Thêm Bạn
+              </Button>
+            </Card.Body>
+          </Card>
+        )}
 
-
-    return(<>
-        <Card className="p-3" style={{ width: "400px" }}>
-            <Form.Group className="mb-3">
-                <Form.Control
-                type="text"
-                placeholder="Nhập gmail..."
-                // value={groupName}
-                onChange={(e) => Call_Gmail(e.target.value)}
-                />
-            </Form.Group>
-           
-            <ListGroup className="mb-3" style={{ maxHeight: "200px", overflowY: "auto" }}>
-            {Object.keys(List_users).length > 0 && List_users.id !== auth.currentUser?.uid && (
-                    <ListGroup.Item key={List_users.id} className="d-flex align-items-center">
-                       <Button key={List_users.id} onClick={() => GuiLoimoi(List_users.id)} variant="info">Thêm Bạn</Button>
-                        <span className="ms-3">{List_users.email}</span>
-                    </ListGroup.Item>
-                )}
-              
-            </ListGroup>
-            <ListGroup className="mb-3" style={{ maxHeight: "200px", overflowY: "auto" }}>
-          
-                    <ListGroup.Item key={List_users.id} className="d-flex align-items-center">
-                        <Button key={List_users.id} onClick={() => GuiLoimoi(List_users.id)} variant="info">Chấp Nhận lời mời</Button>
-                        <span className="ms-3">{List_users.email}</span>
-                    </ListGroup.Item>
-            
-              
-            </ListGroup>
-            <div className="d-flex justify-content-end gap-2">
-                <Button variant="secondary">Thoát</Button>
-            </div>
-            </Card>
-    </>)
+        <Form.Label className="fw-bold">Lời Mời Kết Bạn</Form.Label>
+        <ListGroup style={{ maxHeight: "200px", overflowY: "auto", border: "1px solid #ddd", borderRadius: "5px" }}>
+          {friendRequests.length > 0 ? (
+            friendRequests.map((friend) => (
+              <ListGroup.Item
+                key={friend.id}
+                className="d-flex justify-content-between align-items-center p-3"
+                style={{ borderBottom: "1px solid #eee" }}
+              >
+                <span>{friend.email}</span>
+                <Button variant="success" onClick={() => acceptFriendRequest(friend.id)}>Chấp Nhận</Button>
+              </ListGroup.Item>
+            ))
+          ) : (
+            <ListGroup.Item className="text-center text-muted p-3">Không có lời mời kết bạn.</ListGroup.Item>
+          )}
+        </ListGroup>
+      </Modal.Body>
+      <Modal.Footer>
+        <Button variant="secondary" onClick={onHide}>Thoát</Button>
+      </Modal.Footer>
+    </Modal>
+  );
 }
 
-function TimKiem(){
+// Component tìm kiếm và chức năng
+function TimKiem({ onCreateGroup, onAddFriend }) {
+  const [showCreateGroup, setShowCreateGroup] = useState(false);
+  const [showAddFriend, setShowAddFriend] = useState(false);
 
-    return(
-    <>
-       <div className={styles.TimKiem_Chucnang}>
-            {/* Ô tìm kiếm */}
-            <div className={styles.SearchBox}>
-                <FaSearch />
-                <input type="text" placeholder="Tìm kiếm" />
-            </div>
-            {/* Icon chức năng */}
-            <div className={styles.IconWrapper}>
-                <FaUserPlus />
-                <FaUsers />
-            </div>
-
-            <div className={styles.ChucNangCoBan} >
-                {/* <div className={styles.TaoNhom}>
-                    <FromTaoNhom/>
-                </div> */}
-                <div className={styles.TaoNhom}>
-                    <From_KetBan/>
-                </div>
-            </div>
-        </div>
-    </>)
+  return (
+    <div className={styles.TimKiem_Chucnang}>
+      <div className={styles.SearchBox}>
+        <FaSearch />
+        <input type="text" placeholder="Tìm kiếm" />
+      </div>
+      <div className={styles.IconWrapper}>
+        <FaUserPlus onClick={() => setShowAddFriend(true)} />
+        <FaUsers onClick={() => setShowCreateGroup(true)} />
+      </div>
+      {showCreateGroup && <FromTaoNhom show={showCreateGroup} onHide={() => setShowCreateGroup(false)} />}
+      {showAddFriend && <From_KetBan show={showAddFriend} onHide={() => setShowAddFriend(false)} />}
+    </div>
+  );
 }
-
 
 // Component hiển thị một nhóm trong danh sách
 function The_User({ id, groupName, onSelect }) {
