@@ -122,6 +122,7 @@ function Chat_Conten({ groupId }) {
 }
 
 // Component gửi tin nhắn
+// Component gửi tin nhắn
 function Gui_Conten({ groupId }) {
   const [message, setMessage] = useState("");
   const [image, setImage] = useState(null);
@@ -160,18 +161,33 @@ function Gui_Conten({ groupId }) {
     if (e.target.files[0]) setImage(e.target.files[0]);
   };
 
+  // Hàm xử lý khi nhấn phím Enter
+  const handleKeyDown = (e) => {
+    if (e.key === "Enter") {
+      e.preventDefault(); // Ngăn chặn xuống dòng trong input
+      sendMessage(); // Gọi hàm gửi tin nhắn
+    }
+  };
+
   return (
     <div className={styles.Gui_Conten}>
       <div className={styles.messageInputContainer}>
         <button className={styles.iconButton}><BsEmojiSmile /></button>
         <label htmlFor="file-upload" className={styles.iconButton}><BsPaperclip /></label>
-        <input id="file-upload" type="file" accept="image/*" style={{ display: "none" }} onChange={handleImageUpload} />
+        <input
+          id="file-upload"
+          type="file"
+          accept="image/*"
+          style={{ display: "none" }}
+          onChange={handleImageUpload}
+        />
         <input
           type="text"
           className={styles.inputField}
           placeholder="Nhập tin nhắn..."
           value={message}
           onChange={(e) => setMessage(e.target.value)}
+          onKeyDown={handleKeyDown} // Thêm sự kiện onKeyDown
         />
         <button onClick={sendMessage} className={styles.iconButton}><MdSend /></button>
       </div>
