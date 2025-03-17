@@ -1,10 +1,11 @@
 import Container from 'react-bootstrap/Container';
 import Row from 'react-bootstrap/Row';
 import Col from 'react-bootstrap/Col';
-import { FaSearch, FaUserPlus, FaUsers, FaRegEdit, FaBell, FaThumbtack, FaCog, FaTrash ,FaSignOutAlt} from "react-icons/fa";
+import { FaSearch, FaUserPlus, FaUsers, FaRegEdit, FaBell, FaThumbtack, FaCog, FaTrash, FaSignOutAlt } from "react-icons/fa";
 import { CiUser } from "react-icons/ci";
 import { BsEmojiSmile, BsPaperclip } from "react-icons/bs";
-import { MdSend,MdGroupAdd } from "react-icons/md";
+import { MdSend, MdGroupAdd } from "react-icons/md";
+import { VscLayoutSidebarRightOff } from "react-icons/vsc"; // Import icon mới
 import { useState, useEffect } from "react";
 import { Form, Button, Card, Image, ListGroup, Modal, InputGroup } from "react-bootstrap";
 import io from "socket.io-client";
@@ -12,8 +13,8 @@ import { auth, db, storage } from '../ConnectFireBase/firebaseClient';
 import { update, ref, get, push, set, onValue, off, remove } from "firebase/database";
 import { ref as storageRef, uploadBytes, getDownloadURL } from "firebase/storage";
 import styles from '../Zalochat/Zalochat.module.css';
+import { useNavigate } from 'react-router-dom';
 
-import { useNavigate } from 'react-router-dom'; // Import useNavigate
 const socket = io("http://localhost:4000");
 
 // Component hiển thị tin nhắn
@@ -58,7 +59,7 @@ function TinNhan({ id_user, content, time, imageUrl }) {
 }
 
 // Component header của nội dung trò chuyện
-function Header_Conten({ groupName, memberCount, isAdmin, onEditGroup, onDeleteGroup }) {
+function Header_Conten({ groupName, memberCount, isAdmin, onEditGroup, onDeleteGroup, toggleThongTin }) {
   return (
     <div className={styles.Header_Conten_Div}>
       <div className={styles.Header_Conten_ThongTin}>
@@ -80,6 +81,7 @@ function Header_Conten({ groupName, memberCount, isAdmin, onEditGroup, onDeleteG
         <div className={styles.Header_Conten_Div_ChucNang}>
           <FaRegEdit onClick={onEditGroup} />
           <FaTrash onClick={onDeleteGroup} />
+          <VscLayoutSidebarRightOff onClick={toggleThongTin} /> {/* Thêm nút icon ẩn/hiện */}
         </div>
       )}
     </div>
@@ -123,7 +125,6 @@ function Chat_Conten({ groupId }) {
 }
 
 // Component gửi tin nhắn
-// Component gửi tin nhắn
 function Gui_Conten({ groupId }) {
   const [message, setMessage] = useState("");
   const [image, setImage] = useState(null);
@@ -162,11 +163,10 @@ function Gui_Conten({ groupId }) {
     if (e.target.files[0]) setImage(e.target.files[0]);
   };
 
-  // Hàm xử lý khi nhấn phím Enter
   const handleKeyDown = (e) => {
     if (e.key === "Enter") {
-      e.preventDefault(); // Ngăn chặn xuống dòng trong input
-      sendMessage(); // Gọi hàm gửi tin nhắn
+      e.preventDefault();
+      sendMessage();
     }
   };
 
@@ -188,7 +188,7 @@ function Gui_Conten({ groupId }) {
           placeholder="Nhập tin nhắn..."
           value={message}
           onChange={(e) => setMessage(e.target.value)}
-          onKeyDown={handleKeyDown} // Thêm sự kiện onKeyDown
+          onKeyDown={handleKeyDown}
         />
         <button onClick={sendMessage} className={styles.iconButton}><MdSend /></button>
       </div>
@@ -197,7 +197,7 @@ function Gui_Conten({ groupId }) {
 }
 
 // Component chính của nội dung trò chuyện
-function Conten({ groupId, onGroupDeleted }) {
+function Conten({ groupId, onGroupDeleted, toggleThongTin }) {
   const [groupName, setGroupName] = useState("Default Group");
   const [memberCount, setMemberCount] = useState(0);
   const [isAdmin, setIsAdmin] = useState(false);
@@ -235,10 +235,7 @@ function Conten({ groupId, onGroupDeleted }) {
   const handleDeleteGroup = () => setShowDeleteModal(true);
   const confirmDeleteGroup = async () => {
     if (isAdmin) {
-      // Xóa nhóm từ groupChats
       await remove(ref(db, `groupChats/${groupId}`));
-
-      // Xóa thông tin nhóm khỏi userGroups của tất cả thành viên
       const groupRef = ref(db, `groupChats/${groupId}`);
       const snapshot = await get(groupRef);
       if (snapshot.exists()) {
@@ -249,25 +246,25 @@ function Conten({ groupId, onGroupDeleted }) {
         });
         await update(ref(db), updates);
       }
-
       setShowDeleteModal(false);
       alert(`Nhóm ${groupName} đã được xóa thành công!`);
-      onGroupDeleted(); // Gọi callback để thông báo xóa
+      onGroupDeleted();
     }
   };
 
   return (
-    <Row className={styles.ConTen_Div}>
+    <Row className={styles.ConTen_Div} style={{ width: '100%', height: '100%' }}>
       <Col className={`${styles.ConTen_Head} bg-white p-0`}>
         <Header_Conten 
           groupName={groupName} 
           memberCount={memberCount} 
           isAdmin={isAdmin} 
           onEditGroup={handleEditGroup} 
-          onDeleteGroup={handleDeleteGroup} 
+          onDeleteGroup={handleDeleteGroup}
+          toggleThongTin={toggleThongTin}
         />
       </Col>
-      <Col className={`${styles.ConTen_chat} p-0`}>
+      <Col className={`${styles.ConTen_chat} p-0`} style={{ width: '100%' }}>
         <Chat_Conten groupId={groupId} />
       </Col>
       <Col className={`${styles.ConTen_GuiTin} ${styles.GuiTin} bg-white p-0`}>
@@ -616,17 +613,17 @@ function From_KetBan({ show, onHide }) {
 }
 
 // Component tìm kiếm và chức năng
-// Component tìm kiếm và chức năng
 function TimKiem({ onCreateGroup, onAddFriend }) {
   const [showCreateGroup, setShowCreateGroup] = useState(false);
   const [showAddFriend, setShowAddFriend] = useState(false);
-  const navigate = useNavigate(); // Hook để chuyển hướng
+  const navigate = useNavigate();
+
   const handleLogout = async () => {
     try {
-      await auth.signOut(); // Đăng xuất khỏi Firebase Authentication
-      socket.disconnect(); // Ngắt kết nối socket
+      await auth.signOut();
+      socket.disconnect();
       console.log("Đăng xuất thành công!");
-      navigate('/'); // Chuyển hướng về trang đăng nhập
+      navigate('/');
     } catch (error) {
       console.error("Lỗi khi đăng xuất:", error);
     }
@@ -641,7 +638,7 @@ function TimKiem({ onCreateGroup, onAddFriend }) {
       <div className={styles.IconWrapper}>
         <FaUserPlus onClick={() => setShowAddFriend(true)} />
         <FaUsers onClick={() => setShowCreateGroup(true)} />
-        <FaSignOutAlt onClick={handleLogout} className={styles.logoutIcon} /> {/* Icon logout */}
+        <FaSignOutAlt onClick={handleLogout} className={styles.logoutIcon} />
       </div>
       {showCreateGroup && <FromTaoNhom show={showCreateGroup} onHide={() => setShowCreateGroup(false)} />}
       {showAddFriend && <From_KetBan show={showAddFriend} onHide={() => setShowAddFriend(false)} />}
@@ -667,7 +664,7 @@ function The_User({ id, groupName, onSelect }) {
 // Component danh sách nhóm
 function ListNguoiNhan({ onSelectGroup, refresh }) {
   const [nhom, setNhom] = useState([]);
-  const [groupListeners, setGroupListeners] = useState({}); // Lưu trữ các unsubscribe function cho từng group
+  const [groupListeners, setGroupListeners] = useState({});
 
   const Call_nhom = (user_id) => {
     if (!user_id) return () => {};
@@ -678,7 +675,6 @@ function ListNguoiNhan({ onSelectGroup, refresh }) {
       if (userGroupsData) {
         const groupIDs = Object.keys(userGroupsData);
 
-        // Cleanup các listener cũ trước khi tạo listener mới
         Object.values(groupListeners).forEach((unsubscribe) => unsubscribe());
         setGroupListeners({});
 
@@ -696,7 +692,6 @@ function ListNguoiNhan({ onSelectGroup, refresh }) {
           const unsubscribeGroup = onValue(groupPath, (groupSnapshot) => {
             const groupData = groupSnapshot.val();
             if (groupData && groupData.groupName) {
-              // Kiểm tra xem nhóm đã tồn tại trong groupDetails chưa
               if (!groupDetails.some((g) => g.id === groupID)) {
                 groupDetails.push({ id: groupID, name: groupData.groupName });
               }
@@ -704,8 +699,7 @@ function ListNguoiNhan({ onSelectGroup, refresh }) {
             completedQueries++;
 
             if (completedQueries === groupIDs.length) {
-              // Sắp xếp và cập nhật danh sách nhóm
-              setNhom([...groupDetails]); // Đảm bảo không trùng lặp
+              setNhom([...groupDetails]);
             }
           });
 
@@ -731,7 +725,7 @@ function ListNguoiNhan({ onSelectGroup, refresh }) {
       const unsubscribe = Call_nhom(auth.currentUser.uid);
       return unsubscribe;
     }
-  }, [auth.currentUser, refresh]); // Kích hoạt lại khi refresh thay đổi
+  }, [auth.currentUser, refresh]);
 
   return (
     <div className={styles.listContainer}>
@@ -756,7 +750,7 @@ function Slider_kien({ setSelectedGroupId, refresh }) {
   );
 }
 
-// Component thông tin nhóm with new features
+// Component thông tin nhóm
 function ThongTin({ groupId }) {
   const [groupName, setGroupName] = useState("Default Group");
   const [createdAt, setCreatedAt] = useState("");
@@ -857,8 +851,6 @@ function ThongTin({ groupId }) {
     alert("Đã kick thành viên!");
   };
 
-  console.log(availableUsers)
-
   return (
     <div className="container mt-4">
       <Card className="text-center p-4">
@@ -912,7 +904,6 @@ function ThongTin({ groupId }) {
         <Card.Text>Ghi chú, ghim, bình chọn</Card.Text>
       </Card>
 
-      {/* Modal to add members */}
       <Modal show={showAddMemberModal} onHide={() => setShowAddMemberModal(false)} centered>
         <Modal.Header closeButton>
           <Modal.Title>Thêm Thành Viên</Modal.Title>
@@ -962,7 +953,6 @@ function ThongTin({ groupId }) {
         </Modal.Footer>
       </Modal>
 
-      {/* Modal to show member list */}
       <Modal show={showMemberListModal} onHide={() => setShowMemberListModal(false)} centered>
         <Modal.Header closeButton>
           <Modal.Title>Danh Sách Thành Viên</Modal.Title>
@@ -997,6 +987,7 @@ function ThongTin({ groupId }) {
 function Layout() {
   const [selectedGroupId, setSelectedGroupId] = useState(null);
   const [refreshList, setRefreshList] = useState(false);
+  const [isThongTinVisible, setIsThongTinVisible] = useState(false);
 
   useEffect(() => {
     if (selectedGroupId) socket.emit("join_room", selectedGroupId);
@@ -1007,22 +998,28 @@ function Layout() {
     setRefreshList(prev => !prev);
   };
 
+  const toggleThongTin = () => {
+    setIsThongTinVisible(prev => !prev);
+  };
+
   return (
     <Container fluid>
       <Row className={styles.Container_cc}>
         <Col xs={3} className="bg-primary">
           <Slider_kien setSelectedGroupId={setSelectedGroupId} refresh={refreshList} />
         </Col>
-        <Col xs={6} className="bg-gray">
+        <Col xs={isThongTinVisible ? 6 : 9} className="bg-gray p-0">
           {selectedGroupId ? (
-            <Conten groupId={selectedGroupId} onGroupDeleted={handleGroupDeleted} />
+            <Conten groupId={selectedGroupId} onGroupDeleted={handleGroupDeleted} toggleThongTin={toggleThongTin} />
           ) : (
             <p>Chọn nhóm để bắt đầu trò chuyện</p>
           )}
         </Col>
-        <Col xs={3} className="" style={{ borderLeft: "1px solid rgba(0, 0, 0, 0.347)" }}>
-          {selectedGroupId ? <ThongTin groupId={selectedGroupId} /> : <p>Chọn nhóm để xem thông tin</p>}
-        </Col>
+        {isThongTinVisible && (
+          <Col xs={3} className="cc p-0">
+            {selectedGroupId ? <ThongTin groupId={selectedGroupId} /> : <p>Chọn nhóm để xem thông tin</p>}
+          </Col>
+        )}
       </Row>
     </Container>
   );
